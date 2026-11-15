@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>jstore - sklep z APK</title>
 <!--
   SQL DO WKLEJENIA RAZ W SUPABASE > SQL EDITOR > RUN:
@@ -53,7 +53,6 @@
   create policy "wlasciciel usuwa z apks" on storage.objects for delete using (bucket_id = 'apks' and auth.role() = 'authenticated');
   create policy "zalogowany nadpisuje w apks" on storage.objects for update using (bucket_id = 'apks' and auth.role() = 'authenticated') with check (bucket_id = 'apks' and auth.role() = 'authenticated');
 
-  -- JESLI ZMIENIALES NAZWE z kuba75941 na kub4, przenies pliki w Storage:
   update storage.objects set name = replace(name, 'kuba75941/', 'kub4/') where bucket_id = 'apks' and name like 'kuba75941/%';
 
   Tabele:
@@ -62,92 +61,158 @@
   Bucket Storage: apks
 -->
 <style>
-  *{box-sizing:border-box}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   :root{--bg:#0A0A0B;--surface:#171717;--line:#2A2A2A;--text:#fff;--muted:#A8A29E;--muted2:#78716C;--accent:#A3E635;--danger:#F87171}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-  header{position:sticky;top:0;z-index:30;border-bottom:1px solid #262626;background:rgba(10,10,11,.95);backdrop-filter:blur(8px)}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+  button,input,select,textarea{touch-action:manipulation}
+  header{position:sticky;top:0;z-index:30;border-bottom:1px solid #262626;background:rgba(10,10,11,.96);backdrop-filter:blur(10px)}
   .wrap{max-width:72rem;margin:0 auto;padding:0 1rem}
-  .top{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;padding:.75rem 0}
-  .logo{display:flex;align-items:center;gap:.6rem;background:none;border:0;color:#fff;cursor:pointer;text-align:left}
-  .logo-icon{display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:.75rem;background:var(--accent);color:#000;font-weight:800;font-size:1.3rem}
-  .logo-name{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
-  .badge{border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;font-size:11px;color:var(--muted)}
-  .top-right{margin-left:auto;display:flex;align-items:center;gap:.5rem}
-  .btn{border:0;cursor:pointer;border-radius:999px;padding:.65rem 1rem;font-size:.875rem;font-weight:700}
+  .top{display:flex;flex-wrap:nowrap;align-items:center;gap:.5rem;padding:.65rem 0}
+  .logo{display:flex;align-items:center;gap:.5rem;background:none;border:0;color:#fff;cursor:pointer;text-align:left;padding:.3rem 0;flex-shrink:0;min-height:44px}
+  .logo-icon{display:grid;place-items:center;width:2.35rem;height:2.35rem;border-radius:.7rem;background:var(--accent);color:#000;font-weight:800;font-size:1.25rem;flex-shrink:0}
+  .logo-name{font-size:1.45rem;font-weight:800;letter-spacing:-.02em}
+  .badge{border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;font-size:11px;color:var(--muted);white-space:nowrap}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:.45rem;flex-shrink:0}
+  .btn{border:0;cursor:pointer;border-radius:999px;padding:.65rem 1rem;font-size:.875rem;font-weight:700;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;white-space:nowrap}
   .btn-accent{background:var(--accent);color:#000}
   .btn-accent:hover{filter:brightness(1.1)}
+  .btn-accent:active{transform:scale(.97)}
   .btn-ghost{background:transparent;border:1px solid var(--line);color:#E7E5E4}
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
   .btn-danger{background:transparent;border:1px solid rgba(239,68,68,.3);color:#FCA5A5}
   .btn:disabled{opacity:.5;cursor:not-allowed}
-  .user-chip{display:flex;align-items:center;gap:.5rem;border:1px solid var(--line);background:none;color:#fff;border-radius:999px;padding:.3rem .8rem .3rem .3rem;cursor:pointer}
-  .avatar{width:2rem;height:2rem;border-radius:999px;background:var(--accent);color:#000;display:grid;place-items:center;font-weight:800}
+  .user-chip{display:flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:none;color:#fff;border-radius:999px;padding:.25rem .65rem .25rem .25rem;cursor:pointer;min-height:44px;max-width:150px}
+  .avatar{width:2rem;height:2rem;border-radius:999px;background:var(--accent);color:#000;display:grid;place-items:center;font-weight:800;flex-shrink:0;font-size:.85rem}
+  #topUsername{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   nav{display:flex;gap:.25rem;overflow-x:auto;padding-bottom:.5rem;scrollbar-width:none}
   nav::-webkit-scrollbar{display:none}
-  .nav-btn{flex-shrink:0;border:0;background:transparent;color:#D6D3D1;padding:.55rem 1rem;border-radius:999px;font-size:.875rem;font-weight:600;cursor:pointer}
+  .nav-btn{flex-shrink:0;border:0;background:transparent;color:#D6D3D1;padding:.6rem 1rem;border-radius:999px;font-size:.875rem;font-weight:600;cursor:pointer;min-height:44px}
   .nav-btn.active{background:var(--accent);color:#000}
   main{max-width:72rem;margin:0 auto;padding:0 1rem 4rem}
-  .toolbar{display:flex;flex-direction:column;gap:.75rem;margin-top:1.5rem}
+  .toolbar{display:flex;flex-direction:column;gap:.6rem;margin-top:1rem}
   @media(min-width:1024px){.toolbar{flex-direction:row;align-items:center}}
   .search{position:relative;flex:1}
-  .search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:#fff;padding:.9rem 1rem .9rem 2.7rem;font-size:.875rem;outline:none}
+  .search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:#fff;padding:.9rem 1rem .9rem 2.7rem;font-size:.875rem;outline:none;min-height:48px}
   .search span{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--muted2)}
-  select{appearance:none;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:#fff;padding:.9rem 2.3rem .9rem 1rem;font-size:.875rem;outline:none;cursor:pointer}
-  .grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
+  select{appearance:none;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:#fff;padding:.9rem 2.3rem .9rem 1rem;font-size:.875rem;outline:none;cursor:pointer;min-height:48px;width:100%}
+  @media(min-width:1024px){select{width:auto}}
+  .grid{display:grid;grid-template-columns:1fr;gap:.85rem;margin-top:1rem}
   @media(min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
   @media(min-width:1024px){.grid{grid-template-columns:repeat(3,1fr)}}
-  .card{border:1px solid #262626;background:var(--surface);border-radius:1.5rem;padding:1.25rem;display:flex;flex-direction:column}
+  .card{border:1px solid #262626;background:var(--surface);border-radius:1.25rem;padding:1.1rem;display:flex;flex-direction:column}
   .card:hover{border-color:#3A3A3A}
-  .card-icon{width:3.5rem;height:3.5rem;border-radius:1rem;display:grid;place-items:center;font-size:1.5rem;font-weight:800;color:#000}
-  .card h3{margin:1rem 0 0;font-size:1.25rem;line-height:1.25}
-  .owner{margin:.4rem 0 0;font-size:.75rem;color:var(--muted2)}
+  .card:active{transform:scale(.99)}
+  .card-icon{width:3.25rem;height:3.25rem;border-radius:.9rem;display:grid;place-items:center;font-size:1.4rem;font-weight:800;color:#000;flex-shrink:0}
+  .card h3{margin:.9rem 0 0;font-size:1.15rem;line-height:1.3;word-break:break-word}
+  .owner{margin:.35rem 0 0;font-size:.75rem;color:var(--muted2);word-break:break-all}
   .desc{margin:.5rem 0 0;min-height:40px;font-size:.875rem;line-height:1.6;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .card-footer{margin-top:1.25rem;padding-top:1rem;border-top:1px solid #262626}
-  .empty{margin-top:1rem;border:1px dashed #333;background:var(--surface);border-radius:1.5rem;padding:3.5rem 1.5rem;text-align:center}
-  .empty h2{margin:.75rem 0 0}
-  .empty p{color:var(--muted);font-size:.875rem;max-width:24rem;margin:.5rem auto 0}
+  .card-footer{margin-top:1.1rem;padding-top:1rem;border-top:1px solid #262626}
+  .card-footer .btn{width:100%;padding:.85rem}
+  .empty{margin-top:1rem;border:1px dashed #333;background:var(--surface);border-radius:1.25rem;padding:2.5rem 1.25rem;text-align:center}
+  .empty h2{margin:.75rem 0 0;font-size:1.25rem}
+  .empty p{color:var(--muted);font-size:.875rem;max-width:24rem;margin:.5rem auto 0;line-height:1.6}
+  .empty .btn{margin-top:1rem}
   .count{margin:1rem 0 0;font-size:.875rem;color:var(--muted)}
-  .panel{max-width:42rem;margin:1.5rem auto 0}
-  .form{margin-top:1.5rem;border:1px solid #262626;background:var(--surface);border-radius:1.5rem;padding:1.25rem}
+  .panel{max-width:42rem;margin:1rem auto 0}
+  .form{margin-top:1.25rem;border:1px solid #262626;background:var(--surface);border-radius:1.25rem;padding:1.1rem}
   @media(min-width:640px){.form{padding:1.5rem}}
-  .step{display:flex;align-items:center;gap:.5rem;font-size:.875rem;font-weight:700}
+  .step{display:flex;align-items:center;gap:.5rem;font-size:.875rem;font-weight:700;line-height:1.4}
   .step-num{width:1.75rem;height:1.75rem;border-radius:999px;background:var(--accent);color:#000;display:grid;place-items:center;font-size:.75rem;flex-shrink:0}
-  .dropzone{margin-top:.75rem;min-height:180px;border:2px dashed #3A3A3A;border-radius:1rem;background:#0A0A0B;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:1.5rem 1rem;text-align:center;cursor:pointer}
+  .dropzone{margin-top:.75rem;min-height:190px;border:2px dashed #3A3A3A;border-radius:1rem;background:#0A0A0B;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:1.25rem 1rem;text-align:center;cursor:pointer}
   .dropzone.drag{border-color:var(--accent);background:rgba(163,230,53,.1)}
   .dropzone.has-file{border-color:rgba(163,230,53,.6)}
-  .dropzone .big{font-size:2.25rem;line-height:1}
-  .file-name{font-weight:700;word-break:break-all}
-  .row{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}
+  .dropzone .big{font-size:2.1rem;line-height:1}
+  .file-name{font-weight:700;word-break:break-all;font-size:.9rem}
+  .row{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;width:100%}
+  .row .btn{flex:1;min-width:130px}
   label{display:block;font-size:.875rem;font-weight:600;margin-bottom:.5rem}
-  input[type="text"],input[type="email"],input[type="password"],textarea{width:100%;border-radius:1rem;border:1px solid var(--line);background:#0A0A0B;color:#fff;padding:.85rem 1rem;font-size:.875rem;outline:none}
+  input[type="text"],input[type="email"],input[type="password"],textarea{width:100%;border-radius:.9rem;border:1px solid var(--line);background:#0A0A0B;color:#fff;padding:.9rem 1rem;font-size:16px;outline:none}
+  @media(min-width:640px){input[type="text"],input[type="email"],input[type="password"],textarea{font-size:.875rem}}
   input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(163,230,53,.18)}
   textarea{resize:vertical;min-height:100px}
   .hint{font-size:.75rem;color:var(--muted);line-height:1.6}
-  .error{border-radius:.75rem;background:rgba(239,68,68,.1);padding:.7rem .8rem;font-size:.875rem;color:#FCA5A5}
+  .error{border-radius:.75rem;background:rgba(239,68,68,.1);padding:.7rem .8rem;font-size:.875rem;color:#FCA5A5;line-height:1.5}
   .success{border-radius:.75rem;background:rgba(163,230,53,.1);padding:.7rem .8rem;font-size:.875rem;color:var(--accent)}
   .preview{border:1px solid var(--line);background:#0A0A0B;border-radius:1rem;padding:1rem;margin-top:1rem}
-  .preview-row{display:flex;justify-content:space-between;gap:1rem;font-size:.875rem;padding:.3rem 0}
-  .preview-row dt{color:var(--muted)}
+  .preview-row{display:flex;justify-content:space-between;gap:.75rem;font-size:.875rem;padding:.4rem 0;word-break:break-word}
+  .preview-row dt{color:var(--muted);flex-shrink:0}
   .preview-row dd{margin:0;font-weight:600;text-align:right;word-break:break-word}
-  .my-item{display:flex;flex-wrap:wrap;align-items:center;gap:1rem;border:1px solid #262626;background:var(--surface);border-radius:1.5rem;padding:1rem;margin-top:.75rem}
-  .my-item h3{margin:0}
-  .my-item p{margin:.25rem 0 0;color:var(--muted);font-size:.875rem}
+  .my-item{display:flex;flex-wrap:wrap;align-items:center;gap:.85rem;border:1px solid #262626;background:var(--surface);border-radius:1.25rem;padding:1rem;margin-top:.75rem}
+  .my-item h3{margin:0;font-size:1rem;word-break:break-word}
+  .my-item p{margin:.25rem 0 0;color:var(--muted);font-size:.875rem;word-break:break-word}
+  .my-item .btn-danger{margin-left:auto}
   .flex-1{flex:1;min-width:0}
   .modal-bg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;place-items:end}
   .modal-bg.open{display:grid}
   @media(min-width:640px){.modal-bg.open{place-items:center;padding:1rem}}
-  .modal{width:100%;max-width:28rem;max-height:92vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:28px 28px 0 0;padding:1.25rem}
-  @media(min-width:640px){.modal{border-radius:28px;padding:1.5rem}}
+  .modal{width:100%;max-width:28rem;max-height:92vh;max-height:92dvh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:22px 22px 0 0;padding:1.25rem;padding-bottom:calc(1.25rem + env(safe-area-inset-bottom))}
+  @media(min-width:640px){.modal{border-radius:22px;padding:1.5rem}}
   .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
-  .close{width:2.25rem;height:2.25rem;border-radius:999px;border:1px solid #333;background:transparent;color:#fff;cursor:pointer;flex-shrink:0}
+  .close{width:44px;height:44px;border-radius:999px;border:1px solid #333;background:transparent;color:#fff;cursor:pointer;flex-shrink:0;display:grid;place-items:center}
   .tabs{display:grid;grid-template-columns:1fr 1fr;background:#0A0A0B;border-radius:999px;padding:.25rem;margin-top:1.25rem}
-  .tabs button{border:0;background:transparent;color:#D6D3D1;padding:.65rem;border-radius:999px;font-weight:700;cursor:pointer}
+  .tabs button{border:0;background:transparent;color:#D6D3D1;padding:.7rem;border-radius:999px;font-weight:700;cursor:pointer;min-height:44px}
   .tabs button.active{background:var(--accent);color:#000}
   .field{margin-top:.75rem}
-  .config-banner{margin-top:1rem;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.1);border-radius:1rem;padding:.8rem 1rem;font-size:.875rem;color:#FDE68A}
-  .toast{position:fixed;left:50%;bottom:1.25rem;transform:translateX(-50%);z-index:60;width:calc(100% - 2rem);max-width:28rem;background:#1F1F1F;border:1px solid rgba(163,230,53,.4);border-radius:999px;padding:.8rem 1rem;font-size:.875rem;font-weight:600;display:none;align-items:center;gap:.5rem;box-shadow:0 25px 50px rgba(0,0,0,.4)}
+  .config-banner{margin-top:1rem;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.1);border-radius:1rem;padding:.8rem 1rem;font-size:.875rem;color:#FDE68A;line-height:1.6}
+  .toast{position:fixed;left:50%;bottom:1.25rem;transform:translateX(-50%);z-index:60;width:calc(100% - 2rem);max-width:28rem;background:#1F1F1F;border:1px solid rgba(163,230,53,.4);border-radius:999px;padding:.85rem 1rem;font-size:.875rem;font-weight:600;display:none;align-items:center;gap:.5rem;box-shadow:0 25px 50px rgba(0,0,0,.4)}
   .toast.show{display:flex}
   .hidden{display:none !important}
+
+  /* ===== DOLNA NAWIGACJA - TYLKO TELEFON ===== */
+  .bottom-nav{display:none}
+  @media(max-width:639px){
+    .wrap{padding:0 .85rem}
+    .top{padding:.5rem 0;gap:.4rem}
+    .logo-name{font-size:1.25rem}
+    .logo-icon{width:2.1rem;height:2.1rem;font-size:1.1rem}
+    .logo .badge{display:none}
+    #configBadge{display:none}
+    .top-right .btn-ghost{padding:.6rem .7rem;font-size:.8rem}
+    #topUsername{display:none}
+    .user-chip{padding:.25rem .25rem;max-width:none}
+    #topPublishBtn{padding:.6rem .85rem;font-size:.85rem}
+    #topPublishBtn .long-text{display:none}
+    nav{display:none}
+    main{padding:0 .85rem 6.5rem}
+    .toolbar{margin-top:.85rem}
+    .search input{padding:.85rem 1rem .85rem 2.6rem}
+    .panel{margin-top:.75rem}
+    .form{border-radius:1.1rem}
+    h1{font-size:1.55rem !important;line-height:1.25}
+    .card{padding:1rem}
+    .card-footer{margin-top:.9rem;padding-top:.9rem}
+    .my-item{flex-direction:row}
+    .my-item .btn-danger{width:100%;margin-left:0}
+    .my-item .card-icon{width:2.75rem !important;height:2.75rem !important;font-size:1.1rem !important}
+    .preview-row{flex-direction:column;gap:.15rem}
+    .preview-row dd{text-align:left}
+    .toast{bottom:calc(5.6rem + env(safe-area-inset-bottom));width:calc(100% - 1.7rem);border-radius:1rem;text-align:left}
+    .dropzone{min-height:170px}
+    .row .btn{flex:1 1 100%}
+    /* dolny pasek jak w aplikacji */
+    .bottom-nav{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
+      background:rgba(12,12,13,.98);backdrop-filter:blur(12px);
+      border-top:1px solid #262626;
+      padding:.4rem .4rem calc(.4rem + env(safe-area-inset-bottom));
+      gap:.25rem;
+    }
+    .bottom-nav button{
+      flex:1;border:0;background:transparent;color:#A8A29E;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;
+      padding:.55rem .2rem .45rem;border-radius:.9rem;min-height:56px;
+      font-size:11px;font-weight:700;line-height:1;
+    }
+    .bottom-nav button .ico{font-size:1.35rem;line-height:1}
+    .bottom-nav button.active{background:rgba(163,230,53,.14);color:var(--accent)}
+    .bottom-nav button:active{transform:scale(.96)}
+  }
+  @media(max-width:360px){
+    .logo-name{font-size:1.1rem}
+    #topPublishBtn{padding:.6rem .65rem}
+    .top-right{gap:.3rem}
+  }
 </style>
 </head>
 <body>
@@ -155,17 +220,17 @@
 <header>
   <div class="wrap">
     <div class="top">
-      <button class="logo" onclick="showView('katalog')">
+      <button class="logo" onclick="showView('katalog')" aria-label="jstore - przejdź do katalogu">
         <span class="logo-icon">J</span>
         <span class="logo-name">jstore</span>
         <span class="badge">sklep z APK</span>
       </button>
       <div class="top-right">
-        <span id="configBadge" class="badge hidden">brak konfiguracji Supabase</span>
+        <span id="configBadge" class="badge hidden">brak konfiguracji</span>
         <span id="authLoggedOut"><button class="btn btn-accent" onclick="openLogin('Zaloguj się, aby pobrać / publikować w jstore')">Zaloguj się</button></span>
-        <span id="authLoggedIn" class="hidden" style="display:flex;gap:.5rem;align-items:center">
-          <button class="btn btn-accent hidden" id="topPublishBtn" onclick="goPublish()">+ Opublikuj</button>
-          <button class="user-chip" onclick="showView('profil')"><span class="avatar" id="avatarLetter">U</span><span id="topUsername">@user</span></button>
+        <span id="authLoggedIn" class="hidden" style="display:flex;gap:.45rem;align-items:center">
+          <button class="btn btn-accent hidden" id="topPublishBtn" onclick="goPublish()">+ <span class="long-text">Opublikuj</span></button>
+          <button class="user-chip" onclick="showView('profil')" aria-label="Profil"><span class="avatar" id="avatarLetter">U</span><span id="topUsername">@user</span></button>
           <button class="btn btn-ghost" onclick="logout()">Wyloguj</button>
         </span>
       </div>
@@ -183,7 +248,7 @@
 
   <section id="view-katalog">
     <div class="toolbar">
-      <label class="search"><span>🔍</span><input id="searchInput" placeholder="Szukaj po nazwie, opisie lub twórcy..."></label>
+      <label class="search"><span>🔍</span><input id="searchInput" placeholder="Szukaj po nazwie, opisie lub twórcy..." autocomplete="off"></label>
       <select id="sortSelect"><option value="name">Nazwa A-Z</option><option value="name-desc">Nazwa Z-A</option></select>
     </div>
     <p class="count" id="catalogCount"></p>
@@ -192,27 +257,27 @@
       <div style="font-size:2.25rem">📦</div>
       <h2>Brak aplikacji</h2>
       <p>Katalog jest pusty. Zaloguj się i opublikuj pierwszą aplikację, pojawi się tutaj dla wszystkich.</p>
-      <button class="btn btn-accent" style="margin-top:1rem" onclick="goPublish()">Opublikuj pierwszą aplikację</button>
+      <button class="btn btn-accent" onclick="goPublish()">Opublikuj pierwszą aplikację</button>
     </div>
     <div id="catalogNoResults" class="empty hidden">
       <h2>Nic nie znaleziono</h2>
       <p>Spróbuj innego słowa.</p>
-      <button class="btn btn-ghost" style="margin-top:1rem" onclick="clearSearch()">Wyczyść wyszukiwanie</button>
+      <button class="btn btn-ghost" onclick="clearSearch()">Wyczyść wyszukiwanie</button>
     </div>
   </section>
 
   <section id="view-publikuj" class="hidden">
     <div class="panel">
       <h1 style="font-size:1.9rem;margin:0">Opublikuj aplikację</h1>
-      <p style="color:var(--muted);font-size:.875rem">Najpierw podaj plik APK, potem, jeśli chcesz, nazwę i opis. Tylko plik jest wymagany.</p>
+      <p style="color:var(--muted);font-size:.875rem;line-height:1.6">Najpierw podaj plik APK, potem, jeśli chcesz, nazwę i opis. Tylko plik jest wymagany.</p>
       <form class="form" id="publishForm">
         <div class="step"><span class="step-num">1</span> Krok 1, Plik .apk <span style="color:var(--danger)">*</span></div>
         <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Przeciągnij tutaj plik .apk lub kliknij, aby wybrać plik">
           <input type="file" id="fileInput" accept=".apk" style="display:none">
           <div id="dropEmpty">
             <div class="big">📦</div>
-            <div style="font-weight:800;font-size:1.1rem">Przeciągnij tutaj plik .apk</div>
-            <div class="hint">lub kliknij w środek, aby wybrać plik</div>
+            <div style="font-weight:800;font-size:1.1rem">Wybierz plik .apk</div>
+            <div class="hint">kliknij w środek, aby wybrać plik z telefonu</div>
           </div>
           <div id="dropDrag" class="hidden">
             <div class="big">📦</div>
@@ -223,7 +288,7 @@
             <div class="big">📦</div>
             <div class="file-name" id="fileNameLabel"></div>
             <div class="hint">Plik wybrany, zapisujemy go w Storage jako apks/{owner}/{nazwa}.apk</div>
-            <div class="row" style="margin-top:.5rem">
+            <div class="row" style="margin-top:.6rem">
               <button type="button" class="btn btn-accent" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Zmień plik</button>
               <button type="button" class="btn btn-ghost" onclick="event.stopPropagation(); clearFile()">Usuń plik</button>
             </div>
@@ -247,19 +312,19 @@
         </div>
         <div id="publishError" class="error hidden" style="margin-top:1rem"></div>
         <div id="publishSuccess" class="success hidden" style="margin-top:1rem">Opublikowano!</div>
-        <button id="publishBtn" class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.9rem" disabled>Opublikuj w jstore</button>
+        <button id="publishBtn" class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.95rem" disabled>Opublikuj w jstore</button>
         <p class="hint" style="text-align:center;margin-top:.5rem" id="publishHint">Przycisk Opublikuj odblokuje się po podaniu pliku APK.</p>
       </form>
     </div>
   </section>
 
   <section id="view-moje" class="hidden">
-    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:end;margin-top:1.5rem">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:end;margin-top:1.25rem">
       <div><h1 style="margin:0;font-size:1.9rem">Moje aplikacje</h1><p style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0" id="mySubtitle"></p></div>
-      <button class="btn btn-accent" onclick="goPublish()">+ Nowa aplikacja</button>
+      <button class="btn btn-accent" style="width:100%" onclick="goPublish()">+ Nowa aplikacja</button>
     </div>
     <div id="myList"></div>
-    <div id="myEmpty" class="empty hidden"><div style="font-size:2.25rem">📦</div><h2>Nie masz jeszcze aplikacji</h2><p>Opublikuj pierwszą aplikację, pojawi się w katalogu i tutaj.</p><button class="btn btn-accent" style="margin-top:1rem" onclick="goPublish()">Opublikuj aplikację</button></div>
+    <div id="myEmpty" class="empty hidden"><div style="font-size:2.25rem">📦</div><h2>Nie masz jeszcze aplikacji</h2><p>Opublikuj pierwszą aplikację, pojawi się w katalogu i tutaj.</p><button class="btn btn-accent" onclick="goPublish()">Opublikuj aplikację</button></div>
   </section>
 
   <section id="view-profil" class="hidden">
@@ -267,17 +332,17 @@
       <div class="form" style="margin-top:0">
         <div style="display:flex;align-items:center;gap:1rem">
           <span class="avatar" style="width:4rem;height:4rem;font-size:1.8rem" id="profileAvatar">U</span>
-          <div><h1 style="margin:0" id="profileName">@user</h1><p style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0">Członek społeczności jstore</p></div>
+          <div style="min-width:0"><h1 style="margin:0;word-break:break-all" id="profileName">@user</h1><p style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0">Członek społeczności jstore</p></div>
         </div>
-        <dl style="margin-top:1.5rem;font-size:.875rem">
+        <dl style="margin-top:1.25rem;font-size:.875rem">
           <div class="preview-row" style="border-bottom:1px solid #262626;padding:.75rem 0"><dt>Nazwa użytkownika</dt><dd id="profileUsername">@user</dd></div>
           <div class="preview-row" style="border-bottom:1px solid #262626;padding:.75rem 0"><dt>E-mail</dt><dd id="profileEmail">—</dd></div>
           <div class="preview-row" style="padding:.75rem 0"><dt>Liczba moich aplikacji</dt><dd id="profileCount">0</dd></div>
         </dl>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
-          <button class="btn btn-accent" onclick="goPublish()">Opublikuj aplikację</button>
-          <button class="btn btn-ghost" onclick="goMyApps()">Moje aplikacje</button>
-          <button class="btn btn-danger" style="margin-left:auto" onclick="logout()">Wyloguj</button>
+          <button class="btn btn-accent" style="flex:1" onclick="goPublish()">Opublikuj aplikację</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="goMyApps()">Moje aplikacje</button>
+          <button class="btn btn-danger" style="width:100%" onclick="logout()">Wyloguj</button>
         </div>
       </div>
       <p class="hint" style="margin-top:1rem;border:1px solid var(--line);background:var(--surface);border-radius:1rem;padding:.8rem 1rem">Sesja jest trzymana przez Supabase Auth. Po wylogowaniu nie pobierzesz ani nie opublikujesz aplikacji.</p>
@@ -285,10 +350,17 @@
   </section>
 </main>
 
+<!-- DOLNA NAWIGACJA NA TELEFON -->
+<div class="bottom-nav" id="bottomNav">
+  <button data-view="katalog" class="active" onclick="showView('katalog')"><span class="ico">🏠</span><span>Katalog</span></button>
+  <button data-view="moje" onclick="goMyApps()"><span class="ico">📦</span><span>Moje</span></button>
+  <button data-view="profil" onclick="goProfile()"><span class="ico">👤</span><span>Profil</span></button>
+</div>
+
 <div class="modal-bg" id="loginModal">
   <div class="modal">
     <div class="modal-head">
-      <div><h2 style="margin:0;font-size:1.5rem">Witaj w jstore</h2><p id="loginHint" style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0">Zaloguj się, aby pobrać / publikować w jstore</p></div>
+      <div><h2 style="margin:0;font-size:1.5rem">Witaj w jstore</h2><p id="loginHint" style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0;line-height:1.5">Zaloguj się, aby pobrać / publikować w jstore</p></div>
       <button class="close" onclick="closeLogin()">✕</button>
     </div>
     <div class="tabs">
@@ -296,11 +368,11 @@
       <button id="tabRegister" onclick="setAuthMode('register')">Zarejestruj</button>
     </div>
     <form id="authForm" style="margin-top:1rem">
-      <div class="field" id="usernameField" style="display:none"><label for="authUsername">Nazwa użytkownika *</label><input type="text" id="authUsername" placeholder="np. kuba"></div>
-      <div class="field"><label for="authEmail">E-mail *</label><input type="email" id="authEmail" placeholder="np. kuba@jstore.pl" required></div>
-      <div class="field"><label for="authPass">Hasło *</label><input type="password" id="authPass" placeholder="••••••••" required></div>
+      <div class="field" id="usernameField" style="display:none"><label for="authUsername">Nazwa użytkownika *</label><input type="text" id="authUsername" placeholder="np. kuba" autocomplete="username"></div>
+      <div class="field"><label for="authEmail">E-mail *</label><input type="email" id="authEmail" placeholder="np. kuba@jstore.pl" required autocomplete="email"></div>
+      <div class="field"><label for="authPass">Hasło *</label><input type="password" id="authPass" placeholder="••••••••" required autocomplete="current-password"></div>
       <div id="authError" class="error hidden" style="margin-top:.75rem"></div>
-      <button class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.85rem" id="authSubmit">Zaloguj się</button>
+      <button class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.95rem" id="authSubmit">Zaloguj się</button>
     </form>
   </div>
 </div>
@@ -345,6 +417,7 @@ function fileBaseName(filename){
 function showView(name){
   ['katalog','publikuj','moje','profil'].forEach(v => $('view-' + v).classList.toggle('hidden', v !== name));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if(name === 'moje') renderMyApps();
   if(name === 'profil') renderProfile();
   window.scrollTo({top:0});
@@ -386,7 +459,7 @@ function renderCatalog(){
     const el = document.createElement('article');
     el.className = 'card';
     el.innerHTML = '<span class="card-icon" style="background:' + colorFor(app.name) + '">' + (app.name.charAt(0).toUpperCase() || 'A') + '</span>' +
-      '<h3></h3><p class="owner"></p><p class="desc"></p><div class="card-footer"><button class="btn btn-accent" style="width:100%">⬇ Pobierz</button></div>';
+      '<h3></h3><p class="owner"></p><p class="desc"></p><div class="card-footer"><button class="btn btn-accent">⬇ Pobierz</button></div>';
     el.querySelector('h3').textContent = app.name;
     el.querySelector('.owner').textContent = '@' + app.owner;
     el.querySelector('.desc').textContent = app.description || 'Brak opisu.';
