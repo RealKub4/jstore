@@ -4,16 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>jstore - sklep z APK</title>
-<!-- 
-  SQL do wklejenia w Supabase > SQL Editor, jesli jeszcze nie masz tabel:
-  create table profiles (id uuid primary key references auth.users(id) on delete cascade, username text unique not null);
-  create table apps (id uuid primary key, owner text not null, name text not null, description text default '');
-  Bucket Storage o nazwie: apks
-  W Storage path przy publikacji: apks/{owner}/{nazwa-aplikacji}.apk
--->
 <style>
   *{box-sizing:border-box}
-  :root{--bg:#0A0A0B;--surface:#171717;--surface2:#1F1F1F;--line:#2A2A2A;--text:#fff;--muted:#A8A29E;--muted2:#78716C;--accent:#A3E635;--danger:#F87171}
+  :root{--bg:#0A0A0B;--surface:#171717;--line:#2A2A2A;--text:#fff;--muted:#A8A29E;--muted2:#78716C;--accent:#A3E635;--danger:#F87171}
   body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
   header{position:sticky;top:0;z-index:30;border-bottom:1px solid #262626;background:rgba(10,10,11,.95);backdrop-filter:blur(8px)}
   .wrap{max-width:72rem;margin:0 auto;padding:0 1rem}
@@ -130,9 +123,8 @@
 </header>
 
 <main>
-  <div id="configBanner" class="config-banner hidden">Wklej w kodzie swoje <b>SUPABASE_URL</b> i <b>SUPABASE_ANON_KEY</b> z Supabase &gt; Project Settings &gt; API. Bez tego katalog będzie pusty, a logowanie i publikowanie nie zadziała.</div>
+  <div id="configBanner" class="config-banner hidden">Wklej w kodzie swoje <b>SUPABASE_URL</b> i <b>SUPABASE_ANON_KEY</b> z Supabase, Project Settings, API. Bez tego katalog będzie pusty, a logowanie i publikowanie nie zadziała.</div>
 
-  <!-- KATALOG -->
   <section id="view-katalog">
     <div class="toolbar">
       <label class="search"><span>🔍</span><input id="searchInput" placeholder="Szukaj po nazwie, opisie lub twórcy..."></label>
@@ -153,7 +145,6 @@
     </div>
   </section>
 
-  <!-- PUBLIKUJ -->
   <section id="view-publikuj" class="hidden">
     <div class="panel">
       <h1 style="font-size:1.9rem;margin:0">Opublikuj aplikację</h1>
@@ -184,14 +175,12 @@
         </div>
         <p class="hint" style="margin-top:.5rem">Przesyłanie idzie do bucketu <b>apks</b> w Supabase Storage.</p>
         <div id="fileError" class="error hidden" style="margin-top:.5rem"></div>
-
-        <div style="margin-top:1.25rem" id="step2">
+        <div style="margin-top:1.25rem">
           <div class="step"><span class="step-num">2</span> Krok 2, Nazwa i opis <span style="font-weight:400;color:var(--muted)">(opcjonalne)</span></div>
           <p class="hint" id="step2Hint">Najpierw podaj plik APK w kroku 1, aby odblokować te pola.</p>
           <div class="field"><label for="pubName">Nazwa aplikacji, opcjonalna</label><input type="text" id="pubName" placeholder="Jeśli pusta, uzupełnimy ją z nazwy pliku" disabled></div>
           <div class="field"><label for="pubDesc">Opis, niewymagany</label><textarea id="pubDesc" placeholder="Możesz zostawić pusty, zapisze się pusty opis." disabled></textarea></div>
         </div>
-
         <div class="preview">
           <div style="font-size:.75rem;font-weight:800;letter-spacing:.05em;color:var(--muted)">KROK 3, PODGLĄD</div>
           <dl style="margin:.75rem 0 0">
@@ -200,7 +189,6 @@
             <div class="preview-row"><dt>Opis</dt><dd id="previewDesc">—</dd></div>
           </dl>
         </div>
-
         <div id="publishError" class="error hidden" style="margin-top:1rem"></div>
         <div id="publishSuccess" class="success hidden" style="margin-top:1rem">Opublikowano!</div>
         <button id="publishBtn" class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.9rem" disabled>Opublikuj w jstore</button>
@@ -209,7 +197,6 @@
     </div>
   </section>
 
-  <!-- MOJE -->
   <section id="view-moje" class="hidden">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:end;margin-top:1.5rem">
       <div><h1 style="margin:0;font-size:1.9rem">Moje aplikacje</h1><p style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0" id="mySubtitle"></p></div>
@@ -219,7 +206,6 @@
     <div id="myEmpty" class="empty hidden"><div style="font-size:2.25rem">📦</div><h2>Nie masz jeszcze aplikacji</h2><p>Opublikuj pierwszą aplikację, pojawi się w katalogu i tutaj.</p><button class="btn btn-accent" style="margin-top:1rem" onclick="goPublish()">Opublikuj aplikację</button></div>
   </section>
 
-  <!-- PROFIL -->
   <section id="view-profil" class="hidden">
     <div class="panel">
       <div class="form" style="margin-top:0">
@@ -243,7 +229,6 @@
   </section>
 </main>
 
-<!-- LOGIN -->
 <div class="modal-bg" id="loginModal">
   <div class="modal">
     <div class="modal-head">
@@ -268,24 +253,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* ============================================================
-   TUTAJ WKLEJ SWOJE DANE Z SUPABASE
-   Supabase > Project Settings > API
-   ============================================================ */
+/* TUTAJ WKLEJ SWOJE DANE Z SUPABASE, Project Settings, API */
 const SUPABASE_URL = "https://vfbntnewjhapucvjvjce.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmYm50bmV3amhhcHVjdmp2amNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3NDk2ODYsImV4cCI6MjExMDMyNTY4Nn0.YJIJNRvBjTRqf6PWT6cSZ2xX1YRb9rY4qq_0eqURDPc";
-/* ============================================================
-   Przykład jak ma wyglądać po wklejeniu:
-   const SUPABASE_URL = "https://abcdefghijk.supabase.co";
-   const SUPABASE_ANON_KEY = "eyJhbGciOi...";
-   Nic więcej nie dopisujesz, nie dodajesz drugiego DOCTYPE.
-   ============================================================ */
 
 let supabaseClient = null;
 let currentUser = null;
 let apps = [];
 let selectedFile = null;
-let currentView = 'katalog';
 let authMode = 'login';
 let dragCounter = 0;
 
@@ -311,9 +286,7 @@ function fileBaseName(filename){
   return filename.replace(/\.apk$/i,'').replace(/[-_]+/g,' ').trim();
 }
 
-// ---------- Widoki ----------
 function showView(name){
-  currentView = name;
   ['katalog','publikuj','moje','profil'].forEach(v => $('view-' + v).classList.toggle('hidden', v !== name));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if(name === 'moje') renderMyApps();
@@ -321,24 +294,14 @@ function showView(name){
   window.scrollTo({top:0});
 }
 function requireLogin(hint){
-  if(currentUser){ return true; }
+  if(currentUser) return true;
   openLogin(hint || 'Zaloguj się, aby pobrać / publikować w jstore');
   return false;
 }
-function goPublish(){
-  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
-  showView('publikuj');
-}
-function goMyApps(){
-  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
-  showView('moje');
-}
-function goProfile(){
-  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
-  showView('profil');
-}
+function goPublish(){ if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return; showView('publikuj'); }
+function goMyApps(){ if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return; showView('moje'); }
+function goProfile(){ if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return; showView('profil'); }
 
-// ---------- Katalog ----------
 async function loadApps(){
   if(!supabaseClient) return;
   const { data, error } = await supabaseClient.from('apps').select('id, owner, name, description').order('name', {ascending:true});
@@ -377,7 +340,6 @@ function renderCatalog(){
 }
 function clearSearch(){ $('searchInput').value=''; renderCatalog(); }
 
-// ---------- Pobieranie ----------
 async function downloadApp(app){
   if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
   if(!supabaseClient){ showToast('Brak konfiguracji Supabase.'); return; }
@@ -393,7 +355,6 @@ async function downloadApp(app){
   window.open(data.signedUrl, '_blank');
 }
 
-// ---------- Publikowanie, plik ----------
 function updateFileUI(){
   const has = !!selectedFile;
   $('dropEmpty').classList.toggle('hidden', has);
@@ -417,16 +378,10 @@ function handleFile(file){
   }
   $('fileError').classList.add('hidden');
   selectedFile = file;
-  if(!$('pubName').value.trim()){
-    $('pubName').value = fileBaseName(file.name);
-  }
+  if(!$('pubName').value.trim()) $('pubName').value = fileBaseName(file.name);
   updateFileUI();
 }
-function clearFile(){
-  selectedFile = null;
-  $('fileInput').value = '';
-  updateFileUI();
-}
+function clearFile(){ selectedFile = null; $('fileInput').value = ''; updateFileUI(); }
 function updatePreview(){
   const nameFromInput = $('pubName').value.trim();
   const name = nameFromInput || (selectedFile ? fileBaseName(selectedFile.name) : '');
@@ -435,7 +390,6 @@ function updatePreview(){
   $('previewDesc').textContent = $('pubDesc').value.trim() || '—';
 }
 
-// ---------- Moje aplikacje ----------
 function renderMyApps(){
   if(!currentUser) return;
   const mine = apps.filter(a => a.owner === currentUser.username);
@@ -465,7 +419,6 @@ async function deleteApp(app){
   showToast('Usunięto aplikację.');
 }
 
-// ---------- Profil ----------
 function renderProfile(){
   if(!currentUser) return;
   const mine = apps.filter(a => a.owner === currentUser.username);
@@ -476,11 +429,7 @@ function renderProfile(){
   $('profileAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
 }
 
-// ---------- Auth ----------
-function openLogin(hint){
-  if(hint) $('loginHint').textContent = hint;
-  $('loginModal').classList.add('open');
-}
+function openLogin(hint){ if(hint) $('loginHint').textContent = hint; $('loginModal').classList.add('open'); }
 function closeLogin(){ $('loginModal').classList.remove('open'); }
 function setAuthMode(mode){
   authMode = mode;
@@ -501,12 +450,13 @@ function updateAuthUI(){
     $('previewOwner').textContent = '@' + currentUser.username;
   }
 }
+
 async function handleUser(user){
   const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
   let username = profile?.username;
   if(!username){
     username = user.email.split('@')[0];
-    await supabaseClient.from('profiles').upsert({ id: user.id, username });
+    try { await supabaseClient.from('profiles').upsert({ id: user.id, username }); } catch(e) {}
   }
   currentUser = { id: user.id, email: user.email, username };
 }
@@ -518,7 +468,6 @@ async function logout(){
   showToast('Wylogowano z jstore.');
 }
 
-// ---------- Start ----------
 async function init(){
   if(!isConfigured()){
     $('configBanner').classList.remove('hidden');
@@ -542,7 +491,6 @@ async function init(){
   updatePreview();
 }
 
-// ---------- Listenery ----------
 document.addEventListener('DOMContentLoaded', () => {
   init();
   $('searchInput').addEventListener('input', renderCatalog);
@@ -604,18 +552,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if(!email || !password){ $('authError').textContent = 'Podaj e-mail i hasło.'; $('authError').classList.remove('hidden'); return; }
     if(authMode === 'register'){
       if(username.length < 3){ $('authError').textContent = 'Nazwa użytkownika musi mieć co najmniej 3 znaki.'; $('authError').classList.remove('hidden'); return; }
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      /* POPRAWKA: username idzie w metadata, profil tworzy trigger, nie robimy recznego insert do profiles */
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: { data: { username } }
+      });
       if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
-      if(data.user){
-        const { error: profError } = await supabaseClient.from('profiles').insert({ id: data.user.id, username });
-        if(profError && !profError.message.includes('duplicate')){ $('authError').textContent = profError.message; $('authError').classList.remove('hidden'); return; }
+      if(data.user && data.session){
         await handleUser(data.user);
         updateAuthUI();
         closeLogin();
         showToast('Witaj w jstore, @' + username + '! Konto utworzone.');
       } else {
         closeLogin();
-        showToast('Sprawdź skrzynkę e-mail, aby potwierdzić konto.');
+        showToast('Sprawdź skrzynkę e-mail, aby potwierdzić konto. Profil utworzy się sam.');
       }
     } else {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
