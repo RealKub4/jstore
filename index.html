@@ -1,104 +1,631 @@
 <!DOCTYPE html>
-<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>JStore - Sklep APK</title>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jstore - sklep z APK</title>
+<!-- 
+  SQL do wklejenia w Supabase > SQL Editor, jesli jeszcze nie masz tabel:
+  create table profiles (id uuid primary key references auth.users(id) on delete cascade, username text unique not null);
+  create table apps (id uuid primary key, owner text not null, name text not null, description text default '');
+  Bucket Storage o nazwie: apks
+  W Storage path przy publikacji: apks/{owner}/{nazwa-aplikacji}.apk
+-->
 <style>
-*{box-sizing:border-box} body{margin:0;background:#0a0a0f;color:#e5e7eb;font-family:system-ui,sans-serif}
-header{background:#121218;border-bottom:1px solid #2a2a35;padding:14px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:10}
-.logo{font-weight:800;font-size:22px} .logo span{background:#16a34a;padding:4px 10px;border-radius:10px;margin-right:8px;color:#fff}
-input,textarea,select{width:100%;background:#1a1a22;border:1px solid #2a2a35;color:#fff;padding:12px;border-radius:12px}
-button{cursor:pointer;border:0;border-radius:12px;padding:12px 16px;font-weight:700}
-.btn-green{background:#16a34a;color:#fff} .btn-ghost{background:#1a1a22;color:#fff;border:1px solid #2a2a35}
-.hero{max-width:1100px;margin:auto;padding:32px 20px} .hero h1{font-size:32px;margin:0 0 8px} .hero p{color:#9ca3af}
-.grid{max-width:1100px;margin:auto;padding:0 20px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
-.card{background:#1a1a22;border:1px solid #2a2a35;border-radius:16px;padding:16px} .top{display:flex;gap:12px;align-items:center}
-.icon{width:56px;height:56px;border-radius:14px;color:#fff;display:grid;place-items:center;font-size:26px;font-weight:800;flex-shrink:0}
-.badge{background:#14532d;color:#bbf7d0;font-size:12px;padding:4px 8px;border-radius:999px;display:inline-block;margin:8px 0}
-.meta{font-size:13px;color:#9ca3af} .btn{display:block;text-align:center;background:#16a34a;color:#fff;padding:12px;border-radius:12px;text-decoration:none;font-weight:700;margin-top:12px;width:100%}
-.btn-lock{background:#27272a;color:#9ca3af}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;place-items:center;padding:16px;z-index:20}
-.modal.open{display:grid} .box{background:#1a1a22;border:1px solid #2a2a35;border-radius:20px;padding:22px;width:100%;max-width:520px;max-height:90vh;overflow:auto}
-.drop{border:2px dashed #16a34a;border-radius:16px;padding:28px;text-align:center;background:#0f1a13;margin-bottom:14px}
-.drop small{color:#9ca3af} label{font-size:13px;color:#9ca3af;display:block;margin:14px 0 6px}
-.empty{max-width:600px;margin:40px auto;text-align:center;background:#1a1a22;border:1px solid #2a2a35;border-radius:20px;padding:36px}
-.filters{max-width:1100px;margin:auto;padding:0 20px 16px;display:flex;gap:8px;flex-wrap:wrap}
-.chip{background:#1a1a22;border:1px solid #2a2a35;color:#fff;padding:8px 14px;border-radius:999px;cursor:pointer} .chip.active{background:#16a34a}
-</style></head>
+  *{box-sizing:border-box}
+  :root{--bg:#0A0A0B;--surface:#171717;--surface2:#1F1F1F;--line:#2A2A2A;--text:#fff;--muted:#A8A29E;--muted2:#78716C;--accent:#A3E635;--danger:#F87171}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  header{position:sticky;top:0;z-index:30;border-bottom:1px solid #262626;background:rgba(10,10,11,.95);backdrop-filter:blur(8px)}
+  .wrap{max-width:72rem;margin:0 auto;padding:0 1rem}
+  .top{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;padding:.75rem 0}
+  .logo{display:flex;align-items:center;gap:.6rem;background:none;border:0;color:#fff;cursor:pointer;text-align:left}
+  .logo-icon{display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:.75rem;background:var(--accent);color:#000;font-weight:800;font-size:1.3rem}
+  .logo-name{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+  .badge{border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;font-size:11px;color:var(--muted)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:.5rem}
+  .btn{border:0;cursor:pointer;border-radius:999px;padding:.65rem 1rem;font-size:.875rem;font-weight:700}
+  .btn-accent{background:var(--accent);color:#000}
+  .btn-accent:hover{filter:brightness(1.1)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:#E7E5E4}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-danger{background:transparent;border:1px solid rgba(239,68,68,.3);color:#FCA5A5}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .user-chip{display:flex;align-items:center;gap:.5rem;border:1px solid var(--line);background:none;color:#fff;border-radius:999px;padding:.3rem .8rem .3rem .3rem;cursor:pointer}
+  .avatar{width:2rem;height:2rem;border-radius:999px;background:var(--accent);color:#000;display:grid;place-items:center;font-weight:800}
+  nav{display:flex;gap:.25rem;overflow-x:auto;padding-bottom:.5rem;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .nav-btn{flex-shrink:0;border:0;background:transparent;color:#D6D3D1;padding:.55rem 1rem;border-radius:999px;font-size:.875rem;font-weight:600;cursor:pointer}
+  .nav-btn.active{background:var(--accent);color:#000}
+  main{max-width:72rem;margin:0 auto;padding:0 1rem 4rem}
+  .toolbar{display:flex;flex-direction:column;gap:.75rem;margin-top:1.5rem}
+  @media(min-width:1024px){.toolbar{flex-direction:row;align-items:center}}
+  .search{position:relative;flex:1}
+  .search input{width:100%;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:#fff;padding:.9rem 1rem .9rem 2.7rem;font-size:.875rem;outline:none}
+  .search span{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--muted2)}
+  select{appearance:none;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:#fff;padding:.9rem 2.3rem .9rem 1rem;font-size:.875rem;outline:none;cursor:pointer}
+  .grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem}
+  @media(min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:1024px){.grid{grid-template-columns:repeat(3,1fr)}}
+  .card{border:1px solid #262626;background:var(--surface);border-radius:1.5rem;padding:1.25rem;display:flex;flex-direction:column}
+  .card:hover{border-color:#3A3A3A}
+  .card-icon{width:3.5rem;height:3.5rem;border-radius:1rem;display:grid;place-items:center;font-size:1.5rem;font-weight:800;color:#000}
+  .card h3{margin:1rem 0 0;font-size:1.25rem;line-height:1.25}
+  .owner{margin:.4rem 0 0;font-size:.75rem;color:var(--muted2)}
+  .desc{margin:.5rem 0 0;min-height:40px;font-size:.875rem;line-height:1.6;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card-footer{margin-top:1.25rem;padding-top:1rem;border-top:1px solid #262626}
+  .empty{margin-top:1rem;border:1px dashed #333;background:var(--surface);border-radius:1.5rem;padding:3.5rem 1.5rem;text-align:center}
+  .empty h2{margin:.75rem 0 0}
+  .empty p{color:var(--muted);font-size:.875rem;max-width:24rem;margin:.5rem auto 0}
+  .count{margin:1rem 0 0;font-size:.875rem;color:var(--muted)}
+  .panel{max-width:42rem;margin:1.5rem auto 0}
+  .form{margin-top:1.5rem;border:1px solid #262626;background:var(--surface);border-radius:1.5rem;padding:1.25rem}
+  @media(min-width:640px){.form{padding:1.5rem}}
+  .step{display:flex;align-items:center;gap:.5rem;font-size:.875rem;font-weight:700}
+  .step-num{width:1.75rem;height:1.75rem;border-radius:999px;background:var(--accent);color:#000;display:grid;place-items:center;font-size:.75rem;flex-shrink:0}
+  .dropzone{margin-top:.75rem;min-height:180px;border:2px dashed #3A3A3A;border-radius:1rem;background:#0A0A0B;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:1.5rem 1rem;text-align:center;cursor:pointer}
+  .dropzone.drag{border-color:var(--accent);background:rgba(163,230,53,.1)}
+  .dropzone.has-file{border-color:rgba(163,230,53,.6)}
+  .dropzone .big{font-size:2.25rem;line-height:1}
+  .file-name{font-weight:700;word-break:break-all}
+  .row{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}
+  label{display:block;font-size:.875rem;font-weight:600;margin-bottom:.5rem}
+  input[type="text"],input[type="email"],input[type="password"],textarea{width:100%;border-radius:1rem;border:1px solid var(--line);background:#0A0A0B;color:#fff;padding:.85rem 1rem;font-size:.875rem;outline:none}
+  input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(163,230,53,.18)}
+  textarea{resize:vertical;min-height:100px}
+  .hint{font-size:.75rem;color:var(--muted);line-height:1.6}
+  .error{border-radius:.75rem;background:rgba(239,68,68,.1);padding:.7rem .8rem;font-size:.875rem;color:#FCA5A5}
+  .success{border-radius:.75rem;background:rgba(163,230,53,.1);padding:.7rem .8rem;font-size:.875rem;color:var(--accent)}
+  .preview{border:1px solid var(--line);background:#0A0A0B;border-radius:1rem;padding:1rem;margin-top:1rem}
+  .preview-row{display:flex;justify-content:space-between;gap:1rem;font-size:.875rem;padding:.3rem 0}
+  .preview-row dt{color:var(--muted)}
+  .preview-row dd{margin:0;font-weight:600;text-align:right;word-break:break-word}
+  .my-item{display:flex;flex-wrap:wrap;align-items:center;gap:1rem;border:1px solid #262626;background:var(--surface);border-radius:1.5rem;padding:1rem;margin-top:.75rem}
+  .my-item h3{margin:0}
+  .my-item p{margin:.25rem 0 0;color:var(--muted);font-size:.875rem}
+  .flex-1{flex:1;min-width:0}
+  .modal-bg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;place-items:end}
+  .modal-bg.open{display:grid}
+  @media(min-width:640px){.modal-bg.open{place-items:center;padding:1rem}}
+  .modal{width:100%;max-width:28rem;max-height:92vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:28px 28px 0 0;padding:1.25rem}
+  @media(min-width:640px){.modal{border-radius:28px;padding:1.5rem}}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+  .close{width:2.25rem;height:2.25rem;border-radius:999px;border:1px solid #333;background:transparent;color:#fff;cursor:pointer;flex-shrink:0}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;background:#0A0A0B;border-radius:999px;padding:.25rem;margin-top:1.25rem}
+  .tabs button{border:0;background:transparent;color:#D6D3D1;padding:.65rem;border-radius:999px;font-weight:700;cursor:pointer}
+  .tabs button.active{background:var(--accent);color:#000}
+  .field{margin-top:.75rem}
+  .config-banner{margin-top:1rem;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.1);border-radius:1rem;padding:.8rem 1rem;font-size:.875rem;color:#FDE68A}
+  .toast{position:fixed;left:50%;bottom:1.25rem;transform:translateX(-50%);z-index:60;width:calc(100% - 2rem);max-width:28rem;background:#1F1F1F;border:1px solid rgba(163,230,53,.4);border-radius:999px;padding:.8rem 1rem;font-size:.875rem;font-weight:600;display:none;align-items:center;gap:.5rem;box-shadow:0 25px 50px rgba(0,0,0,.4)}
+  .toast.show{display:flex}
+  .hidden{display:none !important}
+</style>
+</head>
 <body>
-<header><div class="logo"><span>J</span>JStore</div><input id="q" placeholder="Szukaj aplikacji..." style="flex:1;min-width:180px">
-<span id="userInfo" style="color:#9ca3af"></span>
-<button id="addBtn" class="btn-green" style="display:none">+ Dodaj APK</button>
-<button id="loginBtn" class="btn-green">Zaloguj się</button>
-<button id="logoutBtn" class="btn-ghost" style="display:none">Wyloguj</button></header>
 
-<div class="hero"><h1>Pobieraj APK szybko i bezpiecznie</h1><p>JStore - Twój sklep z aplikacjami na Androida. 0 apek na start - zaloguj się i dodaj pierwszą.</p>
-<p id="profileLine" style="color:#9ca3af"></p></div>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <button class="logo" onclick="showView('katalog')">
+        <span class="logo-icon">J</span>
+        <span class="logo-name">jstore</span>
+        <span class="badge">sklep z APK</span>
+      </button>
+      <div class="top-right">
+        <span id="configBadge" class="badge hidden">brak konfiguracji Supabase</span>
+        <span id="authLoggedOut"><button class="btn btn-accent" onclick="openLogin('Zaloguj się, aby pobrać / publikować w jstore')">Zaloguj się</button></span>
+        <span id="authLoggedIn" class="hidden" style="display:flex;gap:.5rem;align-items:center">
+          <button class="btn btn-accent hidden" id="topPublishBtn" onclick="goPublish()">+ Opublikuj</button>
+          <button class="user-chip" onclick="showView('profil')"><span class="avatar" id="avatarLetter">U</span><span id="topUsername">@user</span></button>
+          <button class="btn btn-ghost" onclick="logout()">Wyloguj</button>
+        </span>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-view="katalog" onclick="showView('katalog')">Katalog</button>
+      <button class="nav-btn" data-view="publikuj" onclick="goPublish()">Opublikuj</button>
+      <button class="nav-btn" data-view="moje" onclick="goMyApps()">Moje aplikacje</button>
+      <button class="nav-btn" data-view="profil" onclick="goProfile()">Profil</button>
+    </nav>
+  </div>
+</header>
 
-<div class="filters"><button class="chip active" data-f="all">Wszystkie</button><button class="chip" data-f="mine">Moje aplikacje</button></div>
-<div class="grid" id="grid"></div>
-<div id="empty" class="empty"><div style="font-size:48px">📦</div><h2>Brak aplikacji</h2><p style="color:#9ca3af">Zaloguj się i dodaj pierwszą APK</p><button class="btn-green" onclick="openLogin()">Zaloguj się</button></div>
+<main>
+  <div id="configBanner" class="config-banner hidden">Wklej w kodzie swoje <b>SUPABASE_URL</b> i <b>SUPABASE_ANON_KEY</b> z Supabase &gt; Project Settings &gt; API. Bez tego katalog będzie pusty, a logowanie i publikowanie nie zadziała.</div>
+
+  <!-- KATALOG -->
+  <section id="view-katalog">
+    <div class="toolbar">
+      <label class="search"><span>🔍</span><input id="searchInput" placeholder="Szukaj po nazwie, opisie lub twórcy..."></label>
+      <select id="sortSelect"><option value="name">Nazwa A-Z</option><option value="name-desc">Nazwa Z-A</option></select>
+    </div>
+    <p class="count" id="catalogCount"></p>
+    <div id="catalogGrid" class="grid"></div>
+    <div id="catalogEmpty" class="empty hidden">
+      <div style="font-size:2.25rem">📦</div>
+      <h2>Brak aplikacji</h2>
+      <p>Katalog jest pusty. Zaloguj się i opublikuj pierwszą aplikację, pojawi się tutaj dla wszystkich.</p>
+      <button class="btn btn-accent" style="margin-top:1rem" onclick="goPublish()">Opublikuj pierwszą aplikację</button>
+    </div>
+    <div id="catalogNoResults" class="empty hidden">
+      <h2>Nic nie znaleziono</h2>
+      <p>Spróbuj innego słowa.</p>
+      <button class="btn btn-ghost" style="margin-top:1rem" onclick="clearSearch()">Wyczyść wyszukiwanie</button>
+    </div>
+  </section>
+
+  <!-- PUBLIKUJ -->
+  <section id="view-publikuj" class="hidden">
+    <div class="panel">
+      <h1 style="font-size:1.9rem;margin:0">Opublikuj aplikację</h1>
+      <p style="color:var(--muted);font-size:.875rem">Najpierw podaj plik APK, potem, jeśli chcesz, nazwę i opis. Tylko plik jest wymagany.</p>
+      <form class="form" id="publishForm">
+        <div class="step"><span class="step-num">1</span> Krok 1, Plik .apk <span style="color:var(--danger)">*</span></div>
+        <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Przeciągnij tutaj plik .apk lub kliknij, aby wybrać plik">
+          <input type="file" id="fileInput" accept=".apk" style="display:none">
+          <div id="dropEmpty">
+            <div class="big">📦</div>
+            <div style="font-weight:800;font-size:1.1rem">Przeciągnij tutaj plik .apk</div>
+            <div class="hint">lub kliknij w środek, aby wybrać plik</div>
+          </div>
+          <div id="dropDrag" class="hidden">
+            <div class="big">📦</div>
+            <div style="font-weight:800;color:var(--accent)">Upuść plik tutaj!</div>
+            <div class="hint">Puść plik .apk, aby go wybrać</div>
+          </div>
+          <div id="dropFile" class="hidden" style="width:100%">
+            <div class="big">📦</div>
+            <div class="file-name" id="fileNameLabel"></div>
+            <div class="hint">Plik wybrany, zapisujemy go w Storage jako apks/{owner}/{nazwa}.apk</div>
+            <div class="row" style="margin-top:.5rem">
+              <button type="button" class="btn btn-accent" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Zmień plik</button>
+              <button type="button" class="btn btn-ghost" onclick="event.stopPropagation(); clearFile()">Usuń plik</button>
+            </div>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:.5rem">Przesyłanie idzie do bucketu <b>apks</b> w Supabase Storage.</p>
+        <div id="fileError" class="error hidden" style="margin-top:.5rem"></div>
+
+        <div style="margin-top:1.25rem" id="step2">
+          <div class="step"><span class="step-num">2</span> Krok 2, Nazwa i opis <span style="font-weight:400;color:var(--muted)">(opcjonalne)</span></div>
+          <p class="hint" id="step2Hint">Najpierw podaj plik APK w kroku 1, aby odblokować te pola.</p>
+          <div class="field"><label for="pubName">Nazwa aplikacji, opcjonalna</label><input type="text" id="pubName" placeholder="Jeśli pusta, uzupełnimy ją z nazwy pliku" disabled></div>
+          <div class="field"><label for="pubDesc">Opis, niewymagany</label><textarea id="pubDesc" placeholder="Możesz zostawić pusty, zapisze się pusty opis." disabled></textarea></div>
+        </div>
+
+        <div class="preview">
+          <div style="font-size:.75rem;font-weight:800;letter-spacing:.05em;color:var(--muted)">KROK 3, PODGLĄD</div>
+          <dl style="margin:.75rem 0 0">
+            <div class="preview-row"><dt>Nazwa</dt><dd id="previewName">—</dd></div>
+            <div class="preview-row"><dt>Twórca</dt><dd id="previewOwner">—</dd></div>
+            <div class="preview-row"><dt>Opis</dt><dd id="previewDesc">—</dd></div>
+          </dl>
+        </div>
+
+        <div id="publishError" class="error hidden" style="margin-top:1rem"></div>
+        <div id="publishSuccess" class="success hidden" style="margin-top:1rem">Opublikowano!</div>
+        <button id="publishBtn" class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.9rem" disabled>Opublikuj w jstore</button>
+        <p class="hint" style="text-align:center;margin-top:.5rem" id="publishHint">Przycisk Opublikuj odblokuje się po podaniu pliku APK.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- MOJE -->
+  <section id="view-moje" class="hidden">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:end;margin-top:1.5rem">
+      <div><h1 style="margin:0;font-size:1.9rem">Moje aplikacje</h1><p style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0" id="mySubtitle"></p></div>
+      <button class="btn btn-accent" onclick="goPublish()">+ Nowa aplikacja</button>
+    </div>
+    <div id="myList"></div>
+    <div id="myEmpty" class="empty hidden"><div style="font-size:2.25rem">📦</div><h2>Nie masz jeszcze aplikacji</h2><p>Opublikuj pierwszą aplikację, pojawi się w katalogu i tutaj.</p><button class="btn btn-accent" style="margin-top:1rem" onclick="goPublish()">Opublikuj aplikację</button></div>
+  </section>
+
+  <!-- PROFIL -->
+  <section id="view-profil" class="hidden">
+    <div class="panel">
+      <div class="form" style="margin-top:0">
+        <div style="display:flex;align-items:center;gap:1rem">
+          <span class="avatar" style="width:4rem;height:4rem;font-size:1.8rem" id="profileAvatar">U</span>
+          <div><h1 style="margin:0" id="profileName">@user</h1><p style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0">Członek społeczności jstore</p></div>
+        </div>
+        <dl style="margin-top:1.5rem;font-size:.875rem">
+          <div class="preview-row" style="border-bottom:1px solid #262626;padding:.75rem 0"><dt>Nazwa użytkownika</dt><dd id="profileUsername">@user</dd></div>
+          <div class="preview-row" style="border-bottom:1px solid #262626;padding:.75rem 0"><dt>E-mail</dt><dd id="profileEmail">—</dd></div>
+          <div class="preview-row" style="padding:.75rem 0"><dt>Liczba moich aplikacji</dt><dd id="profileCount">0</dd></div>
+        </dl>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+          <button class="btn btn-accent" onclick="goPublish()">Opublikuj aplikację</button>
+          <button class="btn btn-ghost" onclick="goMyApps()">Moje aplikacje</button>
+          <button class="btn btn-danger" style="margin-left:auto" onclick="logout()">Wyloguj</button>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:1rem;border:1px solid var(--line);background:var(--surface);border-radius:1rem;padding:.8rem 1rem">Sesja jest trzymana przez Supabase Auth. Po wylogowaniu nie pobierzesz ani nie opublikujesz aplikacji.</p>
+    </div>
+  </section>
+</main>
 
 <!-- LOGIN -->
-<div id="loginModal" class="modal"><div class="box"><h2>Zaloguj się / Załóż konto</h2><p style="color:#9ca3af">Nazwa użytkownika to nazwa Twojego profilu.</p>
-<label>Nazwa użytkownika</label><input id="uName" placeholder="np. marek">
-<label>Hasło</label><input id="uPass" type="password" placeholder="••••••••">
-<button class="btn-green" style="width:100%;margin-top:16px" onclick="doLogin()">Zaloguj się / Załóż konto</button>
-<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="closeModals()">Anuluj</button></div></div>
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 style="margin:0;font-size:1.5rem">Witaj w jstore</h2><p id="loginHint" style="color:var(--muted);font-size:.875rem;margin:.25rem 0 0">Zaloguj się, aby pobrać / publikować w jstore</p></div>
+      <button class="close" onclick="closeLogin()">✕</button>
+    </div>
+    <div class="tabs">
+      <button id="tabLogin" class="active" onclick="setAuthMode('login')">Zaloguj</button>
+      <button id="tabRegister" onclick="setAuthMode('register')">Zarejestruj</button>
+    </div>
+    <form id="authForm" style="margin-top:1rem">
+      <div class="field" id="usernameField" style="display:none"><label for="authUsername">Nazwa użytkownika *</label><input type="text" id="authUsername" placeholder="np. kuba"></div>
+      <div class="field"><label for="authEmail">E-mail *</label><input type="email" id="authEmail" placeholder="np. kuba@jstore.pl" required></div>
+      <div class="field"><label for="authPass">Hasło *</label><input type="password" id="authPass" placeholder="••••••••" required></div>
+      <div id="authError" class="error hidden" style="margin-top:.75rem"></div>
+      <button class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.85rem" id="authSubmit">Zaloguj się</button>
+    </form>
+  </div>
+</div>
 
-<!-- ADD -->
-<div id="addModal" class="modal"><div class="box"><h2>Dodaj APK</h2>
-<div class="drop" id="dropArea"><div style="font-size:32px">⬆️</div><b>Wrzuć plik .apk</b><br><small>Kliknij lub przeciągnij plik tutaj</small><br>
-<input type="file" id="apkFile" accept=".apk" style="margin-top:12px"></div>
-<div id="fileInfo" style="background:#0a0a0f;border:1px solid #2a2a35;border-radius:12px;padding:12px;display:none"></div>
-<label>Nazwa</label><input id="appName" placeholder="np. Moja Apka">
-<label>Opis</label><textarea id="appDesc" rows="3" placeholder="Opisz aplikację..."></textarea>
-<button class="btn-green" style="width:100%;margin-top:16px" onclick="publish()">Opublikuj APK</button>
-<button class="btn-ghost" style="width:100%;margin-top:8px" onclick="closeModals()">Anuluj</button></div></div>
+<div class="toast" id="toast">✓ <span id="toastText"></span></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-let apps = JSON.parse(localStorage.getItem('jstore_apps')||'[]');
-let user = localStorage.getItem('jstore_user')||'';
-let filter='all'; let selectedFile=null;
-function save(){localStorage.setItem('jstore_apps',JSON.stringify(apps));}
-function render(){
-  let q=document.getElementById('q').value.toLowerCase();
-  let list=apps.filter(a=>a.name.toLowerCase().includes(q));
-  if(filter==='mine') list=list.filter(a=>a.owner===user);
-  document.getElementById('grid').innerHTML=list.map((a,i)=>`
-  <div class="card"><div class="top"><div class="icon" style="background:${a.color}">${a.name[0].toUpperCase()}</div><div><b>${a.name}</b><div class="meta">@${a.owner} • v1.0 • ${a.sizeMB} MB = ${a.sizeGB} GB</div></div></div>
-  <div class="badge">APK</div><p>${a.desc||''}</p><div class="meta">📁 apps/${a.owner}/${a.fileName}</div><div class="meta">📅 ${a.date}</div>
-  ${user?`<a class="btn" href="${a.url}" download="${a.fileName}">⬇ Pobierz APK</a>`:`<button class="btn btn-lock" onclick="openLogin()">🔒 Zaloguj się, aby pobierać</button>`}</div>`).join('');
-  document.getElementById('empty').style.display=list.length?'none':'block';
-  document.getElementById('userInfo').textContent=user?('Witaj, '+user):'';
-  document.getElementById('loginBtn').style.display=user?'none':'block';
-  document.getElementById('logoutBtn').style.display=user?'block':'none';
-  document.getElementById('addBtn').style.display=user?'block':'none';
-  let mine=apps.filter(a=>a.owner===user); let totalMB=mine.reduce((s,a)=>s+parseFloat(a.sizeMB||0),0);
-  document.getElementById('profileLine').textContent=user?(`Twój profil: ${user} • ${mine.length} aplikacji • łącznie ${(totalMB/1024).toFixed(3)} GB (${totalMB.toFixed(1)} MB)`):'';
+/* ============================================================
+   TUTAJ WKLEJ SWOJE DANE Z SUPABASE
+   Supabase > Project Settings > API
+   ============================================================ */
+const SUPABASE_URL = "https://vfbntnewjhapucvjvjce.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmYm50bmV3amhhcHVjdmp2amNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3NDk2ODYsImV4cCI6MjExMDMyNTY4Nn0.YJIJNRvBjTRqf6PWT6cSZ2xX1YRb9rY4qq_0eqURDPc";
+/* ============================================================
+   Przykład jak ma wyglądać po wklejeniu:
+   const SUPABASE_URL = "https://abcdefghijk.supabase.co";
+   const SUPABASE_ANON_KEY = "eyJhbGciOi...";
+   Nic więcej nie dopisujesz, nie dodajesz drugiego DOCTYPE.
+   ============================================================ */
+
+let supabaseClient = null;
+let currentUser = null;
+let apps = [];
+let selectedFile = null;
+let currentView = 'katalog';
+let authMode = 'login';
+let dragCounter = 0;
+
+const $ = (id) => document.getElementById(id);
+
+function showToast(msg){
+  $('toastText').textContent = msg;
+  $('toast').classList.add('show');
+  setTimeout(()=> $('toast').classList.remove('show'), 3200);
 }
-function openLogin(){document.getElementById('loginModal').classList.add('open')}
-function closeModals(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('open'))}
-function doLogin(){let n=document.getElementById('uName').value.trim(); if(!n){alert('Wpisz nazwę użytkownika');return;} user=n; localStorage.setItem('jstore_user',n); closeModals(); render();}
-document.getElementById('loginBtn').onclick=openLogin;
-document.getElementById('logoutBtn').onclick=()=>{user='';localStorage.removeItem('jstore_user');render();}
-document.getElementById('addBtn').onclick=()=>{if(!user){openLogin();return;} document.getElementById('addModal').classList.add('open')};
-document.getElementById('q').addEventListener('input',render);
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');filter=c.dataset.f;render();});
-document.getElementById('apkFile').addEventListener('change',e=>{selectedFile=e.target.files[0]; if(!selectedFile) return;
-  let mb=(selectedFile.size/1024/1024).toFixed(2); let gb=(selectedFile.size/1024/1024/1024).toFixed(4);
-  let name=selectedFile.name.replace('.apk','');
-  document.getElementById('appName').value=name;
-  let info=document.getElementById('fileInfo'); info.style.display='block';
-  info.innerHTML=`<b>Wykryto:</b> ${selectedFile.name}<br>Rozmiar: <b>${mb} MB = ${gb} GB</b><br>Ścieżka: <b>apps/${user}/${selectedFile.name}</b><br><small>Postęp wrzucania: 100% - gotowe</small>`;
+function isConfigured(){
+  return SUPABASE_URL && SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('WSTAW_TUTAJ') && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.length > 20 && !SUPABASE_ANON_KEY.includes('WSTAW_TUTAJ');
+}
+function sanitizeName(name){
+  return String(name || '').toLowerCase().trim().replace(/[^a-z0-9ąćęłńóśźż\- ]/gi,'').trim().replace(/\s+/g,'_') || 'aplikacja';
+}
+function colorFor(name){
+  const colors = ['#A3E635','#FACC15','#FB923C','#38BDF8','#C084FC','#F472B6','#34D399','#F87171'];
+  let t = 0; for(let i=0;i<name.length;i++) t = (t*31 + name.charCodeAt(i)) % 997;
+  return colors[t % colors.length];
+}
+function fileBaseName(filename){
+  return filename.replace(/\.apk$/i,'').replace(/[-_]+/g,' ').trim();
+}
+
+// ---------- Widoki ----------
+function showView(name){
+  currentView = name;
+  ['katalog','publikuj','moje','profil'].forEach(v => $('view-' + v).classList.toggle('hidden', v !== name));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  if(name === 'moje') renderMyApps();
+  if(name === 'profil') renderProfile();
+  window.scrollTo({top:0});
+}
+function requireLogin(hint){
+  if(currentUser){ return true; }
+  openLogin(hint || 'Zaloguj się, aby pobrać / publikować w jstore');
+  return false;
+}
+function goPublish(){
+  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
+  showView('publikuj');
+}
+function goMyApps(){
+  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
+  showView('moje');
+}
+function goProfile(){
+  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
+  showView('profil');
+}
+
+// ---------- Katalog ----------
+async function loadApps(){
+  if(!supabaseClient) return;
+  const { data, error } = await supabaseClient.from('apps').select('id, owner, name, description').order('name', {ascending:true});
+  if(error){ console.error(error); return; }
+  apps = data || [];
+  renderCatalog();
+  renderMyApps();
+  renderProfile();
+}
+function getFilteredApps(){
+  const q = $('searchInput').value.trim().toLowerCase();
+  let list = apps.filter(a => !q || a.name.toLowerCase().includes(q) || (a.description||'').toLowerCase().includes(q) || a.owner.toLowerCase().includes(q));
+  if($('sortSelect').value === 'name') list.sort((a,b)=> a.name.localeCompare(b.name,'pl'));
+  else list.sort((a,b)=> b.name.localeCompare(a.name,'pl'));
+  return list;
+}
+function renderCatalog(){
+  const list = getFilteredApps();
+  const grid = $('catalogGrid');
+  const q = $('searchInput').value.trim();
+  grid.innerHTML = '';
+  $('catalogEmpty').classList.toggle('hidden', !(apps.length === 0 && !q));
+  $('catalogNoResults').classList.toggle('hidden', !(apps.length > 0 && list.length === 0));
+  $('catalogCount').textContent = list.length === 0 ? '' : 'Znaleziono: ' + list.length + ' ' + (list.length === 1 ? 'aplikacja' : 'aplikacji');
+  list.forEach(app => {
+    const el = document.createElement('article');
+    el.className = 'card';
+    el.innerHTML = '<span class="card-icon" style="background:' + colorFor(app.name) + '">' + (app.name.charAt(0).toUpperCase() || 'A') + '</span>' +
+      '<h3></h3><p class="owner"></p><p class="desc"></p><div class="card-footer"><button class="btn btn-accent" style="width:100%">⬇ Pobierz</button></div>';
+    el.querySelector('h3').textContent = app.name;
+    el.querySelector('.owner').textContent = '@' + app.owner;
+    el.querySelector('.desc').textContent = app.description || 'Brak opisu.';
+    el.querySelector('button').onclick = () => downloadApp(app);
+    grid.appendChild(el);
+  });
+}
+function clearSearch(){ $('searchInput').value=''; renderCatalog(); }
+
+// ---------- Pobieranie ----------
+async function downloadApp(app){
+  if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
+  if(!supabaseClient){ showToast('Brak konfiguracji Supabase.'); return; }
+  const fileName = sanitizeName(app.name) + '.apk';
+  const path = app.owner + '/' + fileName;
+  const { data, error } = await supabaseClient.storage.from('apks').createSignedUrl(path, 60);
+  if(error || !data?.signedUrl){
+    const pub = supabaseClient.storage.from('apks').getPublicUrl(path);
+    if(pub?.data?.publicUrl){ window.open(pub.data.publicUrl, '_blank'); return; }
+    showToast('Nie udało się pobrać pliku. Sprawdź czy plik jest w Storage: apks/' + path);
+    return;
+  }
+  window.open(data.signedUrl, '_blank');
+}
+
+// ---------- Publikowanie, plik ----------
+function updateFileUI(){
+  const has = !!selectedFile;
+  $('dropEmpty').classList.toggle('hidden', has);
+  $('dropDrag').classList.add('hidden');
+  $('dropFile').classList.toggle('hidden', !has);
+  $('dropzone').classList.toggle('has-file', has);
+  if(has) $('fileNameLabel').textContent = selectedFile.name;
+  $('pubName').disabled = !has;
+  $('pubDesc').disabled = !has;
+  $('step2Hint').style.display = has ? 'none' : 'block';
+  $('publishBtn').disabled = !has;
+  $('publishHint').textContent = has ? 'Gotowe do publikacji.' : 'Przycisk Opublikuj odblokuje się po podaniu pliku APK.';
+  updatePreview();
+}
+function handleFile(file){
+  if(!file) return;
+  if(!file.name.toLowerCase().endsWith('.apk')){
+    $('fileError').textContent = 'Wybierz plik .apk, ten plik nie ma rozszerzenia .apk.';
+    $('fileError').classList.remove('hidden');
+    return;
+  }
+  $('fileError').classList.add('hidden');
+  selectedFile = file;
+  if(!$('pubName').value.trim()){
+    $('pubName').value = fileBaseName(file.name);
+  }
+  updateFileUI();
+}
+function clearFile(){
+  selectedFile = null;
+  $('fileInput').value = '';
+  updateFileUI();
+}
+function updatePreview(){
+  const nameFromInput = $('pubName').value.trim();
+  const name = nameFromInput || (selectedFile ? fileBaseName(selectedFile.name) : '');
+  $('previewName').textContent = name || '—';
+  $('previewOwner').textContent = currentUser ? '@' + currentUser.username : '—';
+  $('previewDesc').textContent = $('pubDesc').value.trim() || '—';
+}
+
+// ---------- Moje aplikacje ----------
+function renderMyApps(){
+  if(!currentUser) return;
+  const mine = apps.filter(a => a.owner === currentUser.username);
+  $('mySubtitle').textContent = 'Wszystkie aplikacje, których właścicielem jest @' + currentUser.username + '.';
+  const listEl = $('myList');
+  listEl.innerHTML = '';
+  $('myEmpty').classList.toggle('hidden', mine.length > 0);
+  mine.forEach(app => {
+    const el = document.createElement('article');
+    el.className = 'my-item';
+    el.innerHTML = '<span class="card-icon" style="width:3rem;height:3rem;font-size:1.25rem;background:' + colorFor(app.name) + '"></span><div class="flex-1"><h3></h3><p></p><p></p></div><button class="btn btn-danger">Usuń</button>';
+    el.querySelector('h3').textContent = app.name;
+    el.querySelectorAll('p')[0].textContent = '@' + app.owner;
+    el.querySelectorAll('p')[1].textContent = app.description || 'Brak opisu.';
+    el.querySelector('.card-icon').textContent = app.name.charAt(0).toUpperCase();
+    el.querySelector('.btn-danger').onclick = () => deleteApp(app);
+    listEl.appendChild(el);
+  });
+}
+async function deleteApp(app){
+  if(!confirm('Usunąć aplikację "' + app.name + '"? Tej operacji nie można cofnąć.')) return;
+  const { error } = await supabaseClient.from('apps').delete().eq('id', app.id).eq('owner', currentUser.username);
+  if(error){ showToast('Nie udało się usunąć: ' + error.message); return; }
+  const fileName = sanitizeName(app.name) + '.apk';
+  await supabaseClient.storage.from('apks').remove([app.owner + '/' + fileName]);
+  await loadApps();
+  showToast('Usunięto aplikację.');
+}
+
+// ---------- Profil ----------
+function renderProfile(){
+  if(!currentUser) return;
+  const mine = apps.filter(a => a.owner === currentUser.username);
+  $('profileName').textContent = '@' + currentUser.username;
+  $('profileUsername').textContent = '@' + currentUser.username;
+  $('profileEmail').textContent = currentUser.email || '—';
+  $('profileCount').textContent = mine.length;
+  $('profileAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+}
+
+// ---------- Auth ----------
+function openLogin(hint){
+  if(hint) $('loginHint').textContent = hint;
+  $('loginModal').classList.add('open');
+}
+function closeLogin(){ $('loginModal').classList.remove('open'); }
+function setAuthMode(mode){
+  authMode = mode;
+  $('tabLogin').classList.toggle('active', mode === 'login');
+  $('tabRegister').classList.toggle('active', mode === 'register');
+  $('usernameField').style.display = mode === 'register' ? 'block' : 'none';
+  $('authSubmit').textContent = mode === 'login' ? 'Zaloguj się' : 'Utwórz konto';
+  $('authError').classList.add('hidden');
+}
+function updateAuthUI(){
+  const logged = !!currentUser;
+  $('authLoggedOut').classList.toggle('hidden', logged);
+  $('authLoggedIn').classList.toggle('hidden', !logged);
+  $('topPublishBtn').classList.toggle('hidden', !logged);
+  if(logged){
+    $('topUsername').textContent = '@' + currentUser.username;
+    $('avatarLetter').textContent = currentUser.username.charAt(0).toUpperCase();
+    $('previewOwner').textContent = '@' + currentUser.username;
+  }
+}
+async function handleUser(user){
+  const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
+  let username = profile?.username;
+  if(!username){
+    username = user.email.split('@')[0];
+    await supabaseClient.from('profiles').upsert({ id: user.id, username });
+  }
+  currentUser = { id: user.id, email: user.email, username };
+}
+async function logout(){
+  if(supabaseClient) await supabaseClient.auth.signOut();
+  currentUser = null;
+  updateAuthUI();
+  showView('katalog');
+  showToast('Wylogowano z jstore.');
+}
+
+// ---------- Start ----------
+async function init(){
+  if(!isConfigured()){
+    $('configBanner').classList.remove('hidden');
+    $('configBadge').classList.remove('hidden');
+    renderCatalog();
+    return;
+  }
+  if(!window.supabase){ $('configBanner').textContent = 'Nie udało się wczytać biblioteki Supabase. Sprawdź połączenie z internetem.'; $('configBanner').classList.remove('hidden'); return; }
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    if(session?.user){ await handleUser(session.user); } else { currentUser = null; }
+    updateAuthUI();
+    renderMyApps();
+    renderProfile();
+    updatePreview();
+  });
+  const { data } = await supabaseClient.auth.getSession();
+  if(data.session?.user) await handleUser(data.session.user);
+  updateAuthUI();
+  await loadApps();
+  updatePreview();
+}
+
+// ---------- Listenery ----------
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  $('searchInput').addEventListener('input', renderCatalog);
+  $('sortSelect').addEventListener('change', renderCatalog);
+  $('pubName').addEventListener('input', updatePreview);
+  $('pubDesc').addEventListener('input', updatePreview);
+
+  const dz = $('dropzone');
+  const fileInput = $('fileInput');
+  dz.addEventListener('click', () => fileInput.click());
+  dz.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', (e) => { handleFile(e.target.files?.[0]); e.target.value = ''; });
+  dz.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; $('dropEmpty').classList.add('hidden'); $('dropFile').classList.add('hidden'); $('dropDrag').classList.remove('hidden'); dz.classList.add('drag'); });
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if(dragCounter <= 0){ dragCounter = 0; dz.classList.remove('drag'); updateFileUI(); } });
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dragCounter = 0; dz.classList.remove('drag'); handleFile(e.dataTransfer.files?.[0]); });
+
+  $('publishForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(!requireLogin('Zaloguj się, aby pobrać / publikować w jstore')) return;
+    if(!selectedFile){ $('fileError').textContent = 'Podaj plik APK, tylko plik jest wymagany.'; $('fileError').classList.remove('hidden'); return; }
+    $('publishError').classList.add('hidden');
+    $('publishSuccess').classList.add('hidden');
+    $('publishBtn').disabled = true;
+    $('publishBtn').textContent = 'Publikowanie...';
+    try{
+      const displayName = $('pubName').value.trim() || fileBaseName(selectedFile.name);
+      const description = $('pubDesc').value.trim();
+      const storageFileName = sanitizeName(displayName) + '.apk';
+      const storagePath = currentUser.username + '/' + storageFileName;
+      const { error: uploadError } = await supabaseClient.storage.from('apks').upload(storagePath, selectedFile, { upsert:true, contentType:'application/vnd.android.package-archive' });
+      if(uploadError) throw uploadError;
+      const { error: insertError } = await supabaseClient.from('apps').insert({ id: crypto.randomUUID(), owner: currentUser.username, name: displayName, description });
+      if(insertError) throw insertError;
+      $('publishSuccess').classList.remove('hidden');
+      showToast('Opublikowano!');
+      clearFile();
+      $('pubName').value = '';
+      $('pubDesc').value = '';
+      updatePreview();
+      await loadApps();
+      showView('moje');
+    } catch(err){
+      $('publishError').textContent = 'Nie udało się opublikować: ' + (err?.message || err);
+      $('publishError').classList.remove('hidden');
+    } finally {
+      $('publishBtn').disabled = !selectedFile;
+      $('publishBtn').textContent = 'Opublikuj w jstore';
+      updateFileUI();
+    }
+  });
+
+  $('authForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('authError').classList.add('hidden');
+    const email = $('authEmail').value.trim();
+    const password = $('authPass').value;
+    const username = $('authUsername').value.trim();
+    if(!email || !password){ $('authError').textContent = 'Podaj e-mail i hasło.'; $('authError').classList.remove('hidden'); return; }
+    if(authMode === 'register'){
+      if(username.length < 3){ $('authError').textContent = 'Nazwa użytkownika musi mieć co najmniej 3 znaki.'; $('authError').classList.remove('hidden'); return; }
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
+      if(data.user){
+        const { error: profError } = await supabaseClient.from('profiles').insert({ id: data.user.id, username });
+        if(profError && !profError.message.includes('duplicate')){ $('authError').textContent = profError.message; $('authError').classList.remove('hidden'); return; }
+        await handleUser(data.user);
+        updateAuthUI();
+        closeLogin();
+        showToast('Witaj w jstore, @' + username + '! Konto utworzone.');
+      } else {
+        closeLogin();
+        showToast('Sprawdź skrzynkę e-mail, aby potwierdzić konto.');
+      }
+    } else {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
+      if(data.user){ await handleUser(data.user); updateAuthUI(); closeLogin(); showToast('Witaj ponownie, @' + currentUser.username + '!'); }
+    }
+  });
+
+  $('loginModal').addEventListener('click', (e) => { if(e.target === $('loginModal')) closeLogin(); });
 });
-function publish(){
-  if(!selectedFile){alert('Najpierw wrzuć plik .apk na górze');return;}
-  let name=document.getElementById('appName').value.trim()||selectedFile.name.replace('.apk','');
-  let desc=document.getElementById('appDesc').value.trim();
-  let mb=(selectedFile.size/1024/1024).toFixed(2); let gb=(selectedFile.size/1024/1024/1024).toFixed(4);
-  let url=URL.createObjectURL(selectedFile);
-  let colors=['#16a34a','#7c3aed','#db2777','#ea580c','#0284c7','#475569'];
-  apps.unshift({name,desc,owner:user,fileName:selectedFile.name,sizeMB:mb,sizeGB:gb,url,color:colors[Math.floor(Math.random()*colors.length)],date:new Date().toLocaleDateString('pl-PL')});
-  save(); closeModals(); document.getElementById('appName').value=''; document.getElementById('appDesc').value=''; selectedFile=null; render(); alert('Opublikowano! Apka od razu pojawiła się w katalogu.');
-}
-render();
-</script></body></html>
+</script>
+</body>
+</html>
