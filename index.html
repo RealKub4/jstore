@@ -53,6 +53,9 @@
   create policy "wlasciciel usuwa z apks" on storage.objects for delete using (bucket_id = 'apks' and auth.role() = 'authenticated');
   create policy "zalogowany nadpisuje w apks" on storage.objects for update using (bucket_id = 'apks' and auth.role() = 'authenticated') with check (bucket_id = 'apks' and auth.role() = 'authenticated');
 
+  -- JESLI ZMIENIALES NAZWE z kuba75941 na kub4, przenies pliki w Storage:
+  update storage.objects set name = replace(name, 'kuba75941/', 'kub4/') where bucket_id = 'apks' and name like 'kuba75941/%';
+
   Tabele:
   create table profiles (id uuid primary key references auth.users(id) on delete cascade, username text unique not null);
   create table apps (id uuid primary key, owner text not null, name text not null, description text default '');
@@ -401,9 +404,7 @@ async function downloadApp(app){
   const path = app.owner + '/' + fileName;
   const { data, error } = await supabaseClient.storage.from('apks').createSignedUrl(path, 60);
   if(error || !data?.signedUrl){
-    const pub = supabaseClient.storage.from('apks').getPublicUrl(path);
-    if(pub?.data?.publicUrl){ window.open(pub.data.publicUrl, '_blank'); return; }
-    showToast('Nie udało się pobrać pliku. Sprawdź czy plik jest w Storage: apks/' + path);
+    showToast('Plik nie istnieje w Storage: apks/' + path + '. Usuń tę aplikację i opublikuj ją jeszcze raz.');
     return;
   }
   window.open(data.signedUrl, '_blank');
