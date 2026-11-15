@@ -453,13 +453,14 @@ function updateAuthUI(){
 
 async function handleUser(user){
   const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
-  let username = profile?.username;
+  let username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
   if(!username){
     username = user.email.split('@')[0];
     try { await supabaseClient.from('profiles').upsert({ id: user.id, username }); } catch(e) {}
   }
   currentUser = { id: user.id, email: user.email, username };
 }
+ 
 async function logout(){
   if(supabaseClient) await supabaseClient.auth.signOut();
   currentUser = null;
