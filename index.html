@@ -82,6 +82,15 @@
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
   .btn-danger{background:transparent;border:1px solid rgba(239,68,68,.3);color:#FCA5A5}
   .btn:disabled{opacity:.5;cursor:not-allowed}
+  /* PLUSIK - IDEALNE KÓŁKO, NIE JAJKO */
+  #topPublishBtn{
+    width:44px !important;height:44px !important;min-width:44px !important;min-height:44px !important;
+    aspect-ratio:1 / 1 !important;padding:0 !important;border-radius:50% !important;
+    display:grid !important;place-items:center !important;
+    font-size:26px !important;line-height:1 !important;font-weight:800 !important;
+    flex-shrink:0;
+  }
+  #topPublishBtn:active{transform:scale(.92)}
   .user-chip{display:flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:none;color:#fff;border-radius:999px;padding:.25rem .65rem .25rem .25rem;cursor:pointer;min-height:44px;max-width:150px}
   .avatar{width:2rem;height:2rem;border-radius:999px;background:var(--accent);color:#000;display:grid;place-items:center;font-weight:800;flex-shrink:0;font-size:.85rem}
   #topUsername{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -171,8 +180,8 @@
     .top-right .btn-ghost{padding:.6rem .7rem;font-size:.8rem}
     #topUsername{display:none}
     .user-chip{padding:.25rem .25rem;max-width:none}
-    #topPublishBtn{padding:.6rem .85rem;font-size:.85rem}
-    #topPublishBtn .long-text{display:none}
+    /* na telefonie plusik też idealne kółko 44x44 */
+    #topPublishBtn{width:44px !important;height:44px !important;min-width:44px !important;min-height:44px !important;padding:0 !important;border-radius:50% !important;font-size:26px !important}
     nav{display:none}
     main{padding:0 .85rem 6.5rem}
     .toolbar{margin-top:.85rem}
@@ -190,7 +199,6 @@
     .toast{bottom:calc(5.6rem + env(safe-area-inset-bottom));width:calc(100% - 1.7rem);border-radius:1rem;text-align:left}
     .dropzone{min-height:170px}
     .row .btn{flex:1 1 100%}
-    /* dolny pasek jak w aplikacji */
     .bottom-nav{
       display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
       background:rgba(12,12,13,.98);backdrop-filter:blur(12px);
@@ -210,7 +218,6 @@
   }
   @media(max-width:360px){
     .logo-name{font-size:1.1rem}
-    #topPublishBtn{padding:.6rem .65rem}
     .top-right{gap:.3rem}
   }
 </style>
@@ -229,7 +236,7 @@
         <span id="configBadge" class="badge hidden">brak konfiguracji</span>
         <span id="authLoggedOut"><button class="btn btn-accent" onclick="openLogin('Zaloguj się, aby pobrać / publikować w jstore')">Zaloguj się</button></span>
         <span id="authLoggedIn" class="hidden" style="display:flex;gap:.45rem;align-items:center">
-          <button class="btn btn-accent hidden" id="topPublishBtn" onclick="goPublish()">+ <span class="long-text">Opublikuj</span></button>
+          <button class="btn btn-accent hidden" id="topPublishBtn" onclick="goPublish()" aria-label="Opublikuj aplikację" title="Opublikuj">+</button>
           <button class="user-chip" onclick="showView('profil')" aria-label="Profil"><span class="avatar" id="avatarLetter">U</span><span id="topUsername">@user</span></button>
           <button class="btn btn-ghost" onclick="logout()">Wyloguj</button>
         </span>
