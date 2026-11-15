@@ -492,7 +492,6 @@ function setAuthMode(mode){
   $('usernameField').style.display = mode === 'register' ? 'block' : 'none';
   $('authSubmit').textContent = mode === 'login' ? 'Zaloguj się' : 'Utwórz konto';
   $('authError').classList.add('hidden');
-  // ma sie resetowac przy zmianie zakladki
   $('authForm').reset();
 }
 function updateAuthUI(){
@@ -622,7 +621,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         closeLogin();
         $('authForm').reset();
-        showToast('Sprawdź skrzynkę e-mail, aby potwierdzić konto. Profil utworzy się sam.');
       }
     } else {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
