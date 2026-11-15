@@ -4,6 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>jstore - sklep z APK</title>
+<!--
+  SQL DO WKLEJENIA RAZ W SUPABASE > SQL EDITOR > RUN:
+
+  create or replace function public.handle_new_user()
+  returns trigger language plpgsql security definer set search_path = public
+  as $$
+  begin
+    insert into public.profiles (id, username)
+    values (new.id, coalesce(new.raw_user_meta_data ->> 'username', split_part(new.email, '@', 1)))
+    on conflict (id) do nothing;
+    return new;
+  end;
+  $$;
+
+  drop trigger if exists on_auth_user_created on auth.users;
+  create trigger on_auth_user_created after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+  alter table public.profiles enable row level security;
+  alter table public.apps enable row level security;
+  DO $$
+  DECLARE r RECORD;
+  BEGIN
+    FOR r IN SELECT policyname FROM pg_policies WHERE tablename = 'apps' AND schemaname = 'public'
+    LOOP
+      EXECUTE 'DROP POLICY IF EXISTS "' || r.policyname || '" ON public.apps';
+    END LOOP;
+  END $$;
+  drop policy if exists "publiczny odczyt profili" on public.profiles;
+  drop policy if exists "uzytkownik dodaje swoj profil" on public.profiles;
+  drop policy if exists "uzytkownik edytuje swoj profil" on public.profiles;
+  create policy "publiczny odczyt profili" on public.profiles for select using (true);
+  create policy "uzytkownik dodaje swoj profil" on public.profiles for insert with check (auth.uid() = id);
+  create policy "uzytkownik edytuje swoj profil" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
+  create policy "publiczny odczyt aplikacji" on public.apps for select using (true);
+  create policy "zalogowany dodaje aplikacje" on public.apps for insert with check (auth.role() = 'authenticated');
+  create policy "wlasciciel usuwa aplikacje" on public.apps for delete using (owner = (select username from public.profiles where id = auth.uid()));
+  create policy "wlasciciel edytuje aplikacje" on public.apps for update using (owner = (select username from public.profiles where id = auth.uid())) with check (owner = (select username from public.profiles where id = auth.uid()));
+
+  insert into storage.buckets (id, name, public) values ('apks', 'apks', true) on conflict (id) do update set public = true;
+  drop policy if exists "zalogowany wysyla do apks" on storage.objects;
+  drop policy if exists "zalogowany pobiera z apks" on storage.objects;
+  drop policy if exists "wlasciciel usuwa z apks" on storage.objects;
+  drop policy if exists "zalogowany nadpisuje w apks" on storage.objects;
+  create policy "zalogowany wysyla do apks" on storage.objects for insert with check (bucket_id = 'apks' and auth.role() = 'authenticated');
+  create policy "zalogowany pobiera z apks" on storage.objects for select using (bucket_id = 'apks' and auth.role() = 'authenticated');
+  create policy "wlasciciel usuwa z apks" on storage.objects for delete using (bucket_id = 'apks' and auth.role() = 'authenticated');
+  create policy "zalogowany nadpisuje w apks" on storage.objects for update using (bucket_id = 'apks' and auth.role() = 'authenticated') with check (bucket_id = 'apks' and auth.role() = 'authenticated');
+
+  Tabele:
+  create table profiles (id uuid primary key references auth.users(id) on delete cascade, username text unique not null);
+  create table apps (id uuid primary key, owner text not null, name text not null, description text default '');
+  Bucket Storage: apks
+-->
 <style>
   *{box-sizing:border-box}
   :root{--bg:#0A0A0B;--surface:#171717;--line:#2A2A2A;--text:#fff;--muted:#A8A29E;--muted2:#78716C;--accent:#A3E635;--danger:#F87171}
@@ -438,6 +492,8 @@ function setAuthMode(mode){
   $('usernameField').style.display = mode === 'register' ? 'block' : 'none';
   $('authSubmit').textContent = mode === 'login' ? 'Zaloguj się' : 'Utwórz konto';
   $('authError').classList.add('hidden');
+  // ma sie resetowac przy zmianie zakladki
+  $('authForm').reset();
 }
 function updateAuthUI(){
   const logged = !!currentUser;
@@ -454,13 +510,11 @@ function updateAuthUI(){
 async function handleUser(user){
   const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
   let username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
-  if(!username){
-    username = user.email.split('@')[0];
+  if(!profile?.username){
     try { await supabaseClient.from('profiles').upsert({ id: user.id, username }); } catch(e) {}
   }
   currentUser = { id: user.id, email: user.email, username };
 }
- 
 async function logout(){
   if(supabaseClient) await supabaseClient.auth.signOut();
   currentUser = null;
@@ -553,7 +607,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(!email || !password){ $('authError').textContent = 'Podaj e-mail i hasło.'; $('authError').classList.remove('hidden'); return; }
     if(authMode === 'register'){
       if(username.length < 3){ $('authError').textContent = 'Nazwa użytkownika musi mieć co najmniej 3 znaki.'; $('authError').classList.remove('hidden'); return; }
-      /* POPRAWKA: username idzie w metadata, profil tworzy trigger, nie robimy recznego insert do profiles */
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -564,15 +617,23 @@ document.addEventListener('DOMContentLoaded', () => {
         await handleUser(data.user);
         updateAuthUI();
         closeLogin();
+        $('authForm').reset();
         showToast('Witaj w jstore, @' + username + '! Konto utworzone.');
       } else {
         closeLogin();
+        $('authForm').reset();
         showToast('Sprawdź skrzynkę e-mail, aby potwierdzić konto. Profil utworzy się sam.');
       }
     } else {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
-      if(data.user){ await handleUser(data.user); updateAuthUI(); closeLogin(); showToast('Witaj ponownie, @' + currentUser.username + '!'); }
+      if(data.user){
+        await handleUser(data.user);
+        updateAuthUI();
+        closeLogin();
+        $('authForm').reset();
+        showToast('Witaj ponownie, @' + currentUser.username + '!');
+      }
     }
   });
 
