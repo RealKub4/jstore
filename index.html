@@ -180,7 +180,6 @@
     .top-right .btn-ghost{padding:.6rem .7rem;font-size:.8rem}
     #topUsername{display:none}
     .user-chip{padding:.25rem .25rem;max-width:none}
-    /* na telefonie plusik też idealne kółko 44x44 */
     #topPublishBtn{width:44px !important;height:44px !important;min-width:44px !important;min-height:44px !important;padding:0 !important;border-radius:50% !important;font-size:26px !important}
     nav{display:none}
     main{padding:0 .85rem 6.5rem}
@@ -284,7 +283,7 @@
           <div id="dropEmpty">
             <div class="big">📦</div>
             <div style="font-weight:800;font-size:1.1rem">Wybierz plik .apk</div>
-            <div class="hint">kliknij w środek, aby wybrać plik .apk</div>
+            <div class="hint">kliknij w środek, aby wybrać plik z telefonu</div>
           </div>
           <div id="dropDrag" class="hidden">
             <div class="big">📦</div>
@@ -294,6 +293,7 @@
           <div id="dropFile" class="hidden" style="width:100%">
             <div class="big">📦</div>
             <div class="file-name" id="fileNameLabel"></div>
+            <div class="hint">Plik wybrany, zapisujemy go w Storage jako apks/{owner}/{nazwa}.apk</div>
             <div class="row" style="margin-top:.6rem">
               <button type="button" class="btn btn-accent" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Zmień plik</button>
               <button type="button" class="btn btn-ghost" onclick="event.stopPropagation(); clearFile()">Usuń plik</button>
@@ -378,6 +378,7 @@
       <div class="field"><label for="authEmail">E-mail *</label><input type="email" id="authEmail" placeholder="np. kuba@jstore.pl" required autocomplete="email"></div>
       <div class="field"><label for="authPass">Hasło *</label><input type="password" id="authPass" placeholder="••••••••" required autocomplete="current-password"></div>
       <div id="authError" class="error hidden" style="margin-top:.75rem"></div>
+      <div id="authSuccess" class="success hidden" style="margin-top:.75rem"></div>
       <button class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.95rem" id="authSubmit">Zaloguj się</button>
     </form>
   </div>
@@ -571,6 +572,7 @@ function setAuthMode(mode){
   $('usernameField').style.display = mode === 'register' ? 'block' : 'none';
   $('authSubmit').textContent = mode === 'login' ? 'Zaloguj się' : 'Utwórz konto';
   $('authError').classList.add('hidden');
+  $('authSuccess').classList.add('hidden');
   $('authForm').reset();
 }
 function updateAuthUI(){
@@ -679,10 +681,13 @@ document.addEventListener('DOMContentLoaded', () => {
   $('authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('authError').classList.add('hidden');
+    $('authSuccess').classList.add('hidden');
     const email = $('authEmail').value.trim();
     const password = $('authPass').value;
     const username = $('authUsername').value.trim();
     if(!email || !password){ $('authError').textContent = 'Podaj e-mail i hasło.'; $('authError').classList.remove('hidden'); return; }
+
+    // ===== REJESTRACJA - TYLKO REJESTRUJE, NIE LOGUJE =====
     if(authMode === 'register'){
       if(username.length < 3){ $('authError').textContent = 'Nazwa użytkownika musi mieć co najmniej 3 znaki.'; $('authError').classList.remove('hidden'); return; }
       const { data, error } = await supabaseClient.auth.signUp({
@@ -691,26 +696,29 @@ document.addEventListener('DOMContentLoaded', () => {
         options: { data: { username } }
       });
       if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
-      if(data.user && data.session){
-        await handleUser(data.user);
-        updateAuthUI();
-        closeLogin();
-        $('authForm').reset();
-        showToast('Witaj w jstore, @' + username + '! Konto utworzone.');
-      } else {
-        closeLogin();
-        $('authForm').reset();
+      // Supabase przy wyłączonym Confirm email sam zalogowałby - wylogowujemy od razu, żeby rejestracja NIE logowała
+      if(data.session){
+        await supabaseClient.auth.signOut();
       }
-    } else {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
-      if(data.user){
-        await handleUser(data.user);
-        updateAuthUI();
-        closeLogin();
-        $('authForm').reset();
-        showToast('Witaj ponownie, @' + currentUser.username + '!');
-      }
+      currentUser = null;
+      updateAuthUI();
+      // przełącz na zakładkę LOGOWANIE, wyczyść pola, pokaż sukces - user musi się teraz sam zalogować
+      setAuthMode('login');
+      $('authSuccess').textContent = 'Konto @' + username + ' utworzone! Teraz zaloguj się tym e-mailem i hasłem.';
+      $('authSuccess').classList.remove('hidden');
+      showToast('Konto utworzone! Teraz się zaloguj.');
+      return;
+    }
+
+    // ===== LOGOWANIE - TYLKO LOGUJE, NIE REJESTRUJE =====
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
+    if(data.user){
+      await handleUser(data.user);
+      updateAuthUI();
+      closeLogin();
+      $('authForm').reset();
+      showToast('Witaj ponownie, @' + currentUser.username + '!');
     }
   });
 
