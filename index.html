@@ -373,10 +373,10 @@
       <button id="tabLogin" class="active" onclick="setAuthMode('login')">Zaloguj</button>
       <button id="tabRegister" onclick="setAuthMode('register')">Zarejestruj</button>
     </div>
-    <form id="authForm" style="margin-top:1rem">
-      <div class="field" id="usernameField" style="display:none"><label for="authUsername">Nazwa użytkownika *</label><input type="text" id="authUsername" placeholder="np. kuba" autocomplete="username"></div>
-      <div class="field"><label for="authEmail">E-mail *</label><input type="email" id="authEmail" placeholder="np. kuba@jstore.pl" required autocomplete="email"></div>
-      <div class="field"><label for="authPass">Hasło *</label><input type="password" id="authPass" placeholder="••••••••" required autocomplete="current-password"></div>
+    <form id="authForm" style="margin-top:1rem" autocomplete="off">
+      <div class="field" id="usernameField" style="display:none"><label for="authUsername">Nazwa użytkownika *</label><input type="text" id="authUsername" placeholder="np. kuba" autocomplete="off"></div>
+      <div class="field"><label for="authEmail">E-mail *</label><input type="email" id="authEmail" placeholder="np. kuba@jstore.pl" required autocomplete="off"></div>
+      <div class="field"><label for="authPass">Hasło *</label><input type="password" id="authPass" placeholder="••••••••" required autocomplete="new-password"></div>
       <div id="authError" class="error hidden" style="margin-top:.75rem"></div>
       <div id="authSuccess" class="success hidden" style="margin-top:.75rem"></div>
       <button class="btn btn-accent" style="width:100%;margin-top:1rem;padding:.95rem" id="authSubmit">Zaloguj się</button>
@@ -563,17 +563,36 @@ function renderProfile(){
   $('profileAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
 }
 
-function openLogin(hint){ if(hint) $('loginHint').textContent = hint; $('loginModal').classList.add('open'); }
-function closeLogin(){ $('loginModal').classList.remove('open'); }
+// ===== CZYSZCZENIE FORMULARZA LOGOWANIA / REJESTRACJI =====
+// Wywoływane: po przeładowaniu strony, po zamknięciu okna, po zmianie zakładki, po udanym logowaniu/rejestracji
+function clearAuthForm(){
+  const f = $('authForm');
+  if(!f) return;
+  f.reset();
+  // reset() czasem nie czyści tego co dopisała przeglądarka - czyścimy na siłę
+  if($('authUsername')) $('authUsername').value = '';
+  if($('authEmail')) $('authEmail').value = '';
+  if($('authPass')) $('authPass').value = '';
+  if($('authError')) $('authError').classList.add('hidden');
+  if($('authSuccess')) $('authSuccess').classList.add('hidden');
+}
+function openLogin(hint){
+  clearAuthForm(); // zawsze otwieramy z pustymi rubryczkami
+  if(hint) $('loginHint').textContent = hint;
+  $('loginModal').classList.add('open');
+  setTimeout(()=> { if($('authEmail')) $('authEmail').focus(); }, 50);
+}
+function closeLogin(){
+  clearAuthForm(); // wyjście z okna = czyszczenie rubryczek
+  $('loginModal').classList.remove('open');
+}
 function setAuthMode(mode){
   authMode = mode;
   $('tabLogin').classList.toggle('active', mode === 'login');
   $('tabRegister').classList.toggle('active', mode === 'register');
   $('usernameField').style.display = mode === 'register' ? 'block' : 'none';
   $('authSubmit').textContent = mode === 'login' ? 'Zaloguj się' : 'Utwórz konto';
-  $('authError').classList.add('hidden');
-  $('authSuccess').classList.add('hidden');
-  $('authForm').reset();
+  clearAuthForm(); // zmiana zakładki = czyszczenie
 }
 function updateAuthUI(){
   const logged = !!currentUser;
@@ -598,12 +617,15 @@ async function handleUser(user){
 async function logout(){
   if(supabaseClient) await supabaseClient.auth.signOut();
   currentUser = null;
+  clearAuthForm();
   updateAuthUI();
   showView('katalog');
   showToast('Wylogowano z jstore.');
 }
 
 async function init(){
+  // po przeładowaniu strony - od razu czyścimy rubryczki logowania/rejestracji
+  clearAuthForm();
   if(!isConfigured()){
     $('configBanner').classList.remove('hidden');
     $('configBadge').classList.remove('hidden');
@@ -627,6 +649,10 @@ async function init(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  clearAuthForm(); // przeładowanie = puste rubryczki, nawet jak przeglądarka próbowała przywrócić
+  // przeglądarka czasem dopisuje wartości po załadowaniu - czyścimy jeszcze raz z opóźnieniem
+  setTimeout(clearAuthForm, 100);
+  setTimeout(clearAuthForm, 500);
   init();
   $('searchInput').addEventListener('input', renderCatalog);
   $('sortSelect').addEventListener('change', renderCatalog);
@@ -696,13 +722,11 @@ document.addEventListener('DOMContentLoaded', () => {
         options: { data: { username } }
       });
       if(error){ $('authError').textContent = error.message; $('authError').classList.remove('hidden'); return; }
-      // Supabase przy wyłączonym Confirm email sam zalogowałby - wylogowujemy od razu, żeby rejestracja NIE logowała
       if(data.session){
         await supabaseClient.auth.signOut();
       }
       currentUser = null;
       updateAuthUI();
-      // przełącz na zakładkę LOGOWANIE, wyczyść pola, pokaż sukces - user musi się teraz sam zalogować
       setAuthMode('login');
       $('authSuccess').textContent = 'Konto @' + username + ' utworzone! Teraz zaloguj się tym e-mailem i hasłem.';
       $('authSuccess').classList.remove('hidden');
@@ -716,13 +740,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if(data.user){
       await handleUser(data.user);
       updateAuthUI();
-      closeLogin();
-      $('authForm').reset();
+      closeLogin(); // closeLogin() też czyści rubryczki
       showToast('Witaj ponownie, @' + currentUser.username + '!');
     }
   });
 
   $('loginModal').addEventListener('click', (e) => { if(e.target === $('loginModal')) closeLogin(); });
+  // ESC = wyjście z okna = czyszczenie
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && $('loginModal').classList.contains('open')) closeLogin();
+  });
+  // powrót do strony z cache przeglądarki (back/forward) = też czyścimy
+  window.addEventListener('pageshow', () => { clearAuthForm(); });
+  // przed opuszczeniem strony - wyczyść żeby po powrocie nie było starych danych
+  window.addEventListener('pagehide', () => { clearAuthForm(); });
 });
 </script>
 </body>
